@@ -639,7 +639,7 @@ class BoardFetcher {
                             f(false, "NPE", "", "", cookies)
                             return
                         }
-                        if (body.error == 0) f(true, "", body.targetSrl.toString(),"https://meeco.kr${body.downloadUrl}", cookies)
+                        if (body.error == 0) f(true, "", body.targetSrl.toString(),"https://img.meeco.kr${body.downloadUrl}", cookies)
                         else f(false, body.message, "", "", cookies)
                     }
 
