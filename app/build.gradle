@@ -61,4 +61,7 @@ dependencies {
     implementation 'com.squareup.picasso:picasso:2.71828'
     implementation 'de.hdodenhof:circleimageview:3.0.0'
     implementation 'com.github.irshulx:laser-native-editor:3.0.3'
+    implementation 'com.github.duanhong169:colorpicker:1.1.6'
+    implementation 'com.squareup.retrofit2:retrofit:2.5.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.5.0'
 }

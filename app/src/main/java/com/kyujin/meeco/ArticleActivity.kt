@@ -48,6 +48,7 @@ class ArticleActivity : AppCompatActivity(), StickerSelectionFragment.InterfaceC
     var extraInformationText: TextView? = null
     var myAdapter: ReplyRecyclerAdapter? = null
     var scrollView: NestedScrollView? = null
+    var inReplyTo = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,6 +72,8 @@ class ArticleActivity : AppCompatActivity(), StickerSelectionFragment.InterfaceC
         replysText = findViewById<TextView>(R.id.articleReplyCountText)
         extraInformationText = findViewById<TextView>(R.id.citationText)
 
+        contentText!!.mActivity = this
+
         scrollView = findViewById(R.id.articleScrollView)
 
         val writeReplyButton = findViewById<Button>(R.id.writeReplyButton)
@@ -85,7 +88,7 @@ class ArticleActivity : AppCompatActivity(), StickerSelectionFragment.InterfaceC
         supportActionBar!!.setDisplayHomeAsUpEnabled(true)
         mRecyclerView.layoutManager = mLayoutManager
 
-        myAdapter = ReplyRecyclerAdapter(viewArticleHolder)
+        myAdapter = ReplyRecyclerAdapter(this, viewArticleHolder, ArticleAdapterCommunicator())
 
         mRecyclerView.adapter = myAdapter
 
@@ -106,7 +109,7 @@ class ArticleActivity : AppCompatActivity(), StickerSelectionFragment.InterfaceC
             } else {
                 cookies.clear()
                 sharedPreferences!!.all.forEach { t, k -> cookies.put(t, k as String) }
-                boardFetcher.writeReply(boardId, articleId, "0", replyText, cookies) { success, error, newCookies ->
+                boardFetcher.writeReply(boardId, articleId, if (inReplyTo != -1) viewArticleHolder[inReplyTo].replyId else "", replyText, cookies) { success, error, newCookies ->
                     runOnUiThread {
                         val editor = sharedPreferences!!.edit()
                         newCookies.forEach { t, u -> editor.putString(t, u) }
@@ -226,7 +229,7 @@ class ArticleActivity : AppCompatActivity(), StickerSelectionFragment.InterfaceC
         if (item == null) return
 
         val cookies = getCookieFromSharedPrefs(sharedPreferences!!)
-        boardFetcher.writeStickerReply(boardId, articleId, "0", csrfToken, item, cookies)  { success, error ->
+        boardFetcher.writeStickerReply(boardId, articleId, if (inReplyTo != -1) viewArticleHolder[inReplyTo].replyId else "", csrfToken, item, cookies)  { success, error ->
             if (success) {
                 Snackbar.make(writeReplyEdit!!, "댓글을 등록했습니다", Snackbar.LENGTH_SHORT)
                     .setAction("Action", null).show()
@@ -246,6 +249,31 @@ class ArticleActivity : AppCompatActivity(), StickerSelectionFragment.InterfaceC
                 Snackbar.make(writeReplyEdit!!, "댓글 등록에 실패했습니다: $error", Snackbar.LENGTH_SHORT)
                     .setAction("Action", null).show()
             }
+        }
+    }
+
+    override fun onBackPressed() {
+        if (inReplyTo != -1) refreshReplyTarget(-1)
+        else super.onBackPressed()
+    }
+
+    fun refreshReplyTarget(index: Int) {
+        if (index == -1) {
+            viewArticleHolder[inReplyTo].selected = false
+            inReplyTo = -1
+        } else {
+            if (inReplyTo != -1) {
+                viewArticleHolder[inReplyTo].selected = false
+            }
+            viewArticleHolder[index].selected = true
+            inReplyTo = index
+        }
+        myAdapter!!.notifyDataSetChanged()
+    }
+
+    inner class ArticleAdapterCommunicator: ReplyAdapterCommunicator {
+        override fun setReplyTarget(index: Int) {
+            refreshReplyTarget(index)
         }
     }
 }

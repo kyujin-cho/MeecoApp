@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Meeco</string>
+    <string name="app_name">미코앱</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
     <string name="nav_header_title">로그인하지 않음</string>

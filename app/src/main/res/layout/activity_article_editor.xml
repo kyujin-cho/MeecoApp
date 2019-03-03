@@ -27,10 +27,22 @@
 
         </HorizontalScrollView>
         <!--End of Editor toolbar -->
+    </RelativeLayout>
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" android:layout_marginBottom="40dp"
+            android:layout_marginLeft="5dp" android:layout_marginRight="5dp">
+        <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPersonName"
+                android:ems="10"
+                android:id="@+id/articleTitleText" android:hint="Title"/>
         <ScrollView
                 android:layout_width="match_parent"
                 android:scrollbars="vertical"
-                android:layout_marginBottom="40dp"
                 android:layout_alignParentTop="true"
                 android:layout_height="match_parent"
         >
@@ -38,20 +50,12 @@
                     android:layout_width="match_parent"
                     android:id="@+id/articleEditor"
                     app:render_type="Editor"
-                    app:placeholder="내용"
+                    app:placeholder="Start writing here..."
                     android:paddingTop="10dp"
-                    android:paddingLeft="20dp"
-                    android:paddingRight="20dp"
                     android:layout_height="match_parent"
                     android:paddingBottom="100dp">
             </com.github.irshulx.Editor>
         </ScrollView>
-    </RelativeLayout>
-    <EditText
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textPersonName"
-            android:ems="10"
-            android:id="@+id/articleTitleText" android:hint="제목"/>
+    </LinearLayout>
 
 </android.support.design.widget.CoordinatorLayout>

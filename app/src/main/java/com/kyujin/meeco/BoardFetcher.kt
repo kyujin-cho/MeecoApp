@@ -3,6 +3,8 @@ package com.kyujin.meeco
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Bitmap
+import android.net.Uri
+import android.os.AsyncTask
 import android.util.Log
 import com.github.kittinunf.fuel.Fuel
 import com.github.kittinunf.fuel.core.*
@@ -10,15 +12,65 @@ import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.httpPost
 import com.github.kittinunf.fuel.httpUpload
 import com.github.kittinunf.fuel.json.responseJson
+import com.google.gson.annotations.SerializedName
 import com.helger.css.ECSSVersion
 import com.helger.css.reader.CSSReaderDeclarationList
+import okhttp3.MediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import org.json.JSONObject
 import org.jsoup.Jsoup
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.*
+import retrofit2.http.Headers
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URL
 import javax.xml.parsers.DocumentBuilderFactory
+
+interface ImageUploadInterface {
+    @retrofit2.http.Multipart
+    @POST("/")
+    @Headers(
+        "Accept: application/json, text/javascript, */*; q=0.01",
+        "Referer: https://meeco.kr/index.php?mid=free&act=dispBoardWrite",
+        "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1",
+        "X-Requested-With: XMLHttpRequest",
+        "Host: meeco.kr"
+    )
+    fun uploadImage(
+        @Header("Cookie") cookies: String,
+        @Header("X-CSRF-Token") csrfToken: String,
+        @PartMap file: Map<String, @JvmSuppressWildcards RequestBody>
+    ): Call<ImageResponse>
+}
+
+class ImageResponse {
+    @SerializedName("chunk_status")
+    var chunkStatus = 0
+    @SerializedName("file_srl")
+    var fileSrl = 0
+    @SerializedName("file_size")
+    var fileSize = 0
+    @SerializedName("direct_download")
+    var directDownload = ""
+    @SerializedName("source_filename")
+    var fileName = ""
+    @SerializedName("upload_target_srl")
+    var targetSrl = 0
+    @SerializedName("download_url")
+    var downloadUrl = ""
+    @SerializedName("error")
+    var error = 0
+    @SerializedName("message")
+    var message = ""
+}
 
 class BoardFetcher {
     fun fetchNormal(boardId: String, category: String, pageNum: Int, f: (articles: ArrayList<NormalRowInfo>) -> Unit) {
@@ -243,10 +295,10 @@ class BoardFetcher {
                                 }
                                 it.html("""<img src="sticker://${stickerUrl.substring(4, stickerUrl.length - 1)}" style="width: 300px; height: 300px;">""")
                             }
-
                         }
                     }
                     replyList.add(ReplyInfo(
+                        it.id().replace("comment_", ""),
                         boardId,
                         it.select("div.pf_wrap > span.writer").isNotEmpty(),
                         articleId,
@@ -359,12 +411,12 @@ class BoardFetcher {
                 val obj = Jsoup.parse(result.get())
                 val CSRF = obj.selectFirst("meta[name=\"csrf-token\"]").attr("content")
                 val replyContentAsHTML = replyContent.split("\n").map { "<p>$it</p>" }.joinToString("")
-                val formData = hashMapOf<String, String>(
+                val formDataMap = hashMapOf<String, String>(
                     "_filter" to "insert_comment",
                     "error_return_url" to "/$boardId/$articleId",
                     "mid" to boardId,
                     "document_srl" to articleId,
-                    "comment_srl" to replyId,
+                    "comment_srl" to "0",
                     "_rx_csrf_token" to CSRF,
                     "use_editor" to "Y",
                     "use_html" to "Y",
@@ -373,10 +425,14 @@ class BoardFetcher {
                     "_rx_ajax_compat" to "XMLRPC",
                     "vid" to "",
                     "content" to replyContentAsHTML
-                ).toList()
+                )
+
+                if (replyId.isNotBlank()) {
+                    formDataMap["parent_srl"] = replyId
+                }
 
                 "https://meeco.kr"
-                    .httpPost(formData)
+                    .httpPost(formDataMap.toList())
                     .header("Cookie", generateCookieString(cookies))
                     .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
                     .header("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1")
@@ -518,8 +574,12 @@ class BoardFetcher {
             }
     }
 
-    fun uploadImage(context: Context, boardId: String, image: Bitmap, fileName: String, cookies: HashMap<String, String>, f: (success: Boolean, error: String, url: String, newCookies: HashMap<String, String>) -> Unit) {
-        val file = File(context.cacheDir, fileName)
+    fun toRequestBody(value: String): RequestBody {
+        return RequestBody.create(MediaType.parse("text/plain"), value)
+    }
+
+    fun uploadImage(context: Context, boardId: String, image: Bitmap, targetSrl: String?, fileName: String, cookies: HashMap<String, String>, f: (success: Boolean, error: String, targetSrl: String, url: String, newCookies: HashMap<String, String>) -> Unit) {
+        val file = File(context.cacheDir, fileName + ".png")
         file.createNewFile()
         val bos = ByteArrayOutputStream()
         image.compress(Bitmap.CompressFormat.PNG, 0, bos)
@@ -532,38 +592,67 @@ class BoardFetcher {
 
         val nonce = "T${System.currentTimeMillis()}.${Math.random()}"
 
-        "https://meeco.kr/index/php?mid=$boardId&act=dispBoardWrite"
+        val editorSeqRegex = "xe_editor_sequence: ([0-9]+),".toRegex()
+
+        "https://meeco.kr/index.php?mid=$boardId&act=dispBoardWrite"
             .httpGet()
             .header("Cookie", generateCookieString(cookies))
             .responseString { request, response, result ->
                 updateCookie(cookies, response.header("set-cookie"))
                 val obj = Jsoup.parse(result.get())
+                val (editorSequence) = editorSeqRegex.find(result.get())!!.destructured
                 val CSRF = obj.selectFirst("meta[name=\"csrf-token\"]").attr("content")
 
-                Fuel.upload("https://meeco.kr", Method.POST)
-                    .add { FileDataPart(file, "FileData", fileName) }
-                    .add { InlineDataPart("1", "editor_sequence") }
-                    .add { InlineDataPart(boardId, "mid") }
-                    .add { InlineDataPart("procFileUpload", "act") }
-                    .add { InlineDataPart(nonce, "nonce") }
-                    .header("Cookie", generateCookieString(cookies))
-                    .header("Referer", "https://meeco.kr/index.php?mid=$boardId&act=dispBoardWrite")
-                    .header("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1")
-                    .header("X-Requested-With", "XMLHTTPRequest")
-                    .header("X-CSRF-Token", CSRF)
-                    .responseJson { request, response, result ->
-                        val obj = result.get().obj()
-                        if (obj.getInt("error") == 0) {
-                            f(true, "", obj.getString("download_url"), cookies)
-                        } else {
-                            f(false, obj.getString("message"), "", cookies)
+                val map: HashMap<String, RequestBody> = HashMap<String, RequestBody>()
+                map["editor_sequence"] = toRequestBody(editorSequence)
+                map["upload_target_srl"] = toRequestBody(targetSrl?:"")
+                map["mid"] = toRequestBody(boardId)
+                map["act"] = toRequestBody("procFileUpload")
+                map["nonce"] = toRequestBody(nonce.substring(0..(nonce.length-1)))
+                map["""Filedata"; filename="$fileName.png"""] = RequestBody.create(MediaType.parse("image/png"), file)
+
+                updateCookie(cookies, response.header("set-cookie"))
+                val retrofit = Retrofit.Builder()
+                    .baseUrl("https://meeco.kr/")
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+                val service = retrofit.create(ImageUploadInterface::class.java)
+                val call = service.uploadImage(
+                    cookies = generateCookieString(cookies),
+                    csrfToken = CSRF,
+                    file = map
+                )
+
+                call.enqueue(object: Callback<ImageResponse> {
+                    override fun onResponse(call: Call<ImageResponse>, response: Response<ImageResponse>) {
+                        val newCookies = response.headers().values("set-cookie")
+                        updateCookie(cookies, newCookies)
+
+                        if (response.errorBody() != null) {
+                            val errorBody = response.errorBody()!!.string()
+                            f(false, "Errorbody Null", "", "", cookies)
+                            Log.i("ImageUpload", errorBody)
+                            return
                         }
+                        val body = response.body()
+                        if (body == null) {
+                            f(false, "NPE", "", "", cookies)
+                            return
+                        }
+                        if (body.error == 0) f(true, "", body.targetSrl.toString(),"https://meeco.kr${body.downloadUrl}", cookies)
+                        else f(false, body.message, "", "", cookies)
                     }
+
+                    override fun onFailure(call: Call<ImageResponse>, t: Throwable) {
+                        t.printStackTrace()
+                        f(false, t.message ?: "",  "","", cookies)
+                    }
+                })
             }
     }
 
-    fun writeArticle(boardId: String, title: String, html: String, cookies: HashMap<String, String>, f: (success: Boolean, error: String, articleId: String, newCookies: HashMap<String, String>) -> Unit) {
-        "https://meeco.kr/index/php?mid=$boardId&act=dispBoardWrite"
+    fun writeArticle(boardId: String, title: String, targetSrl: String?, html: String, cookies: HashMap<String, String>, f: (success: Boolean, error: String, articleId: String, newCookies: HashMap<String, String>) -> Unit) {
+        "https://meeco.kr/index.php?mid=$boardId&act=dispBoardWrite"
             .httpGet()
             .header("Cookie", generateCookieString(cookies))
             .responseString { request, response, result ->
@@ -584,7 +673,9 @@ class BoardFetcher {
                         "use_html" to "Y",
                         "module" to "board",
                         "_rx_ajax_compat" to "XMLRPC",
-                        "vid" to ""
+                        "vid" to "",
+                        "document_srl" to (targetSrl?:"0"),
+                        "_saved_doc_message" to "자동 저장된 글이 있습니다. 복구하시겠습니까? 글을 다 쓰신 후 저장하면 자동 저장 본은 사라집니다."
                     ).toList())
                     .header("Cookie", generateCookieString(cookies))
                     .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")

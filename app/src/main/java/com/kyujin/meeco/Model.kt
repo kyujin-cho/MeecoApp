@@ -36,6 +36,7 @@ class GalleryRowInfo(
 )
 
 class ReplyInfo(
+    var replyId: String,
     var boardId: String,
     var isWriter: Boolean,
     var articleId: String,
@@ -46,7 +47,9 @@ class ReplyInfo(
     var likes: Int,
     var replyTo: String,
     var rawHTML: String
-)
+) {
+    var selected = false
+}
 
 class ArticleInfo(
     var boardId: String,

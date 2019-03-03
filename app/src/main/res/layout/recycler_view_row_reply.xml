@@ -1,75 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
-              android:layout_height="wrap_content" android:orientation="horizontal">
-    <TextView android:layout_width="60dp"
-              android:layout_height="match_parent"
-              android:layout_weight="7"
-              android:id="@+id/replyMargin"
-              android:layout_gravity="center" android:gravity="center"/>
-    <LinearLayout
-            android:orientation="horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" android:layout_weight="6">
-        <ImageView
-                android:layout_width="45dp"
-                android:layout_height="wrap_content" android:src="@mipmap/ic_meeco_icon_round"
-                android:id="@+id/replyProfileImage"
-                android:visibility="visible" android:layout_gravity="top|center_vertical"
-                android:layout_marginRight="8dp"
-                android:foregroundGravity="top" android:scaleType="fitStart"/>
-        <LinearLayout
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_weight="1">
-            <TextView
-                    android:text="TextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:id="@+id/replyNickNameText"
-                    android:layout_weight="1" android:bufferType="spannable"/>
-            <TextView
-                    android:text="TextView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:id="@+id/inReplyToText" android:layout_weight="1"
-                    android:textSize="10sp"/>
+                android:layout_height="wrap_content" android:id="@+id/replyView">
+
+    <View
+            android:id="@+id/divider2"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?android:attr/listDivider"
+            android:layout_marginTop="1dp"/>
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginLeft="5dp"
+            android:layout_marginRight="5dp" android:id="@+id/replyLayout" android:layout_marginTop="17dp">
+        <TextView android:layout_width="60dp"
+                  android:layout_height="match_parent"
+                  android:layout_weight="7"
+                  android:id="@+id/replyMargin"
+                  android:layout_gravity="center" android:gravity="center"/>
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_weight="6">
+            <ImageView
+                    android:layout_width="45dp"
+                    android:layout_height="wrap_content" android:src="@mipmap/ic_meeco_icon_round"
+                    android:id="@+id/replyProfileImage"
+                    android:visibility="visible" android:layout_gravity="top|center_vertical"
+                    android:layout_marginRight="8dp"
+                    android:foregroundGravity="top" android:scaleType="fitStart"/>
             <LinearLayout
-                    android:orientation="horizontal"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent">
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_weight="1">
                 <TextView
                         android:text="TextView"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:id="@+id/timeText" android:layout_weight="1"
-                        android:textSize="10sp" android:layout_marginRight="4dp"/>
+                        android:layout_height="wrap_content" android:id="@+id/replyNickNameText"
+                        android:layout_weight="1" android:bufferType="spannable"/>
                 <TextView
-                        android:text="/"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:id="@+id/textView2" android:layout_weight="1"
+                        android:text="TextView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:id="@+id/inReplyToText" android:layout_weight="1"
                         android:textSize="10sp"/>
-                <TextView
-                        android:text="TextView"
+                <LinearLayout
+                        android:orientation="horizontal"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:id="@+id/likesText" android:layout_weight="1"
-                        android:layout_marginLeft="4dp" android:textSize="10sp"/>
+                        android:layout_height="match_parent">
+                    <TextView
+                            android:text="TextView"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:id="@+id/timeText" android:layout_weight="1"
+                            android:textSize="10sp" android:layout_marginRight="4dp"/>
+                    <TextView
+                            android:text="/"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:id="@+id/textView2" android:layout_weight="1"
+                            android:textSize="10sp"/>
+                    <TextView
+                            android:text="TextView"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:id="@+id/likesText" android:layout_weight="1"
+                            android:layout_marginLeft="4dp" android:textSize="10sp"/>
+                </LinearLayout>
+                <LinearLayout
+                        android:orientation="horizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+                    <com.kyujin.meeco.HTMLTextView
+                            android:text="TextView"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:id="@+id/replyContentText"
+                            android:layout_weight="1"
+                            android:layout_marginTop="8dp" android:textColor="@android:color/black"/>
+                </LinearLayout>
             </LinearLayout>
-            <LinearLayout
-                    android:orientation="horizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent">
-                <com.kyujin.meeco.HTMLTextView
-                        android:text="TextView"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:id="@+id/replyContentText"
-                        android:layout_weight="1"
-                        android:layout_marginTop="8dp" android:textColor="@android:color/black"/>
-            </LinearLayout>
-            <View
-                    android:id="@+id/divider2"
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?android:attr/listDivider"
-                    android:layout_weight="8" android:layout_marginBottom="16dp"/>
         </LinearLayout>
+        <TextView
+                android:id="@+id/textViewOptions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_alignParentTop="true"
+                android:paddingLeft="@dimen/activity_horizontal_margin"
+                android:text="&#8942;"
+                android:textAppearance="?android:textAppearanceLarge"/>
     </LinearLayout>
-</LinearLayout>
+</RelativeLayout>

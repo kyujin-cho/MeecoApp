@@ -1,5 +1,6 @@
 package com.kyujin.meeco
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -211,34 +212,13 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     editor.putString("userName", "")
                     editor.putString("password", "")
                     editor.apply()
-//                    ProcessPhoenix.triggerRebirth(this)
+                    ProcessPhoenix.triggerRebirth(this)
                 } else {
                     val intent = Intent(this, LoginActivity::class.java)
                     startActivity(intent)
                 }
             }
         }
-        // Handle navigation view item clicks here.
-//        when (item.itemId) {
-//            R.id.nav_camera -> {
-//                // Handle the camera action
-//            }
-//            R.id.nav_gallery -> {
-//
-//            }
-//            R.id.nav_slideshow -> {
-//
-//            }
-//            R.id.nav_manage -> {
-//
-//            }
-//            R.id.nav_share -> {
-//
-//            }
-//            R.id.nav_send -> {
-//
-//            }
-//        }
 
         drawer_layout.closeDrawer(GravityCompat.START)
         return true
@@ -262,14 +242,20 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (data == null) return
         when (requestCode) {
             1 -> articleWriteResult(resultCode, data)
         }
     }
 
-    fun articleWriteResult(resultCode: Int, data: Intent?) {
+    fun articleWriteResult(resultCode: Int, data: Intent) {
         when (resultCode) {
-
+            Activity.RESULT_OK -> {
+                val intent = Intent(this, ArticleActivity::class.java)
+                intent.putExtra("boardId", currentBoard)
+                intent.putExtra("articleId", data.getStringExtra("articleId"))
+                startActivity(intent)
+            }
         }
     }
 
