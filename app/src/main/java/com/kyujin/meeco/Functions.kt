@@ -81,3 +81,25 @@ public fun saveImageToExternal(context: Context, anyView: View, imgName: String,
         }
     }.execute()
 }
+
+public fun getStyledHTMLForArticle(rawHTML: String, width: Int, color: String): String {
+    return """<!DOCTYPE html>
+                <html lang="en">
+                <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=$width, initial-scale=1.0">
+                  <style>
+                    body {
+                      color: $color !important;
+                    }
+                    img, iframe {
+                      max-width: 100%;
+                      height: auto;
+                    }
+                  </style>
+                </head>
+                <body>
+                  $rawHTML
+                </body>
+            </html>""".trimIndent()
+}

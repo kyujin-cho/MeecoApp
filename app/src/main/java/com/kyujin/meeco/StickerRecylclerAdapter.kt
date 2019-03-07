@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
 import com.squareup.picasso.Picasso
 
 class StickerViewHolder(view: View): RecyclerView.ViewHolder(view) {
@@ -16,7 +17,7 @@ class StickerViewHolder(view: View): RecyclerView.ViewHolder(view) {
     }
 }
 
-class StickerRecylclerAdapter(val stickers: ArrayList<StickerInfo>, val listener: OnItemClickListener): RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class StickerRecylclerAdapter(val stickers: ArrayList<StickerInfo>, val stickerSize: Int, val listener: OnItemClickListener): RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     override fun onCreateViewHolder(p0: ViewGroup, p1: Int): RecyclerView.ViewHolder {
         val view = LayoutInflater.from(p0.context).inflate(R.layout.recycler_view_row_sticker, p0, false)
         return StickerViewHolder(view)
@@ -33,6 +34,7 @@ class StickerRecylclerAdapter(val stickers: ArrayList<StickerInfo>, val listener
         if (targetItem.url.isNotBlank()) {
             Picasso.get()
                 .load(targetItem.url)
+                .resize(stickerSize, stickerSize)
                 .into(vh.stickerImage)
         }
     }

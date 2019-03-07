@@ -23,6 +23,10 @@ import android.widget.TextView
 
 import java.util.ArrayList
 import android.Manifest.permission.READ_CONTACTS
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.httpPost
 import com.jakewharton.processphoenix.ProcessPhoenix
@@ -107,10 +111,16 @@ class LoginActivity : AppCompatActivity(), LoaderCallbacks<Cursor> {
                         editor.putString("uid", uid)
                         editor.commit()
 
-                        ProcessPhoenix.triggerRebirth(applicationContext)
+                        val mStartActivity = Intent(this, MainActivity::class.java)
+                        val mPendingIntentId = 123456
+                        val mPendingIntent = PendingIntent.getActivity(this, mPendingIntentId, mStartActivity, PendingIntent.FLAG_CANCEL_CURRENT)
+                        val mgr = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                        mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, mPendingIntent)
+                        System.exit(0)
                     }
                 } else {
                     runOnUiThread {
+                        showProgress(false)
                         password.error = error
                         password.requestFocus()
                     }

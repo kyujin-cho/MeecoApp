@@ -4,16 +4,22 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
+import android.support.v7.app.AppCompatDelegate
 import android.text.Editable
+import android.text.SpannableStringBuilder
+import android.util.TypedValue
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.AdapterView
 import android.widget.EditText
+import android.widget.Spinner
 import com.github.irshulx.Editor
 import com.github.irshulx.EditorListener
 import com.github.irshulx.models.EditorTextStyle
@@ -28,12 +34,28 @@ class ArticleEditorActivity : AppCompatActivity() {
     var currentBoard = ""
     var targetSrl: String? = null
     var sharedPreferences: SharedPreferences? = null
+    var spinner: Spinner? = null
+    var currentCategory = ""
+    var categorySrl = ""
+    var categories = ArrayList<Pair<String, String>>()
+    var selectedCategory = -1
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setTheme(android.R.style.Theme_Material_Light_NoActionBar)
         setContentView(R.layout.activity_article_editor)
 
-        currentBoard = intent!!.getStringExtra("boardId")
+        sharedPreferences = getSharedPreferences("cookie_jar", Context.MODE_PRIVATE)
+
+        targetSrl = intent.getStringExtra("articleId")
+
+        currentBoard = intent.getStringExtra("boardId")
         titleText = findViewById(R.id.articleTitleText)
+
+        val categories = (intent.getSerializableExtra("categories") ?: ArrayList<Pair<String, String>>()) as ArrayList<Pair<String, String>>
+        if (categories.size > 0) {
+            this.categories = categories
+        }
+
 
         editor = findViewById(R.id.articleEditor)
         editor!!.editorListener = MyEditorListener()
@@ -90,15 +112,40 @@ class ArticleEditorActivity : AppCompatActivity() {
 
         findViewById<View>(R.id.action_erase).setOnClickListener { editor!!.clearAllContents() }
 
-        editor!!.setLineSpacing(0.5F)
-        editor!!.render()
+        if (targetSrl != null) {
+            boardFetcher.loadEditArticle(currentBoard, targetSrl!!, getCookieFromSharedPrefs(sharedPreferences!!)) { selectedCategory, title, html, csrfToken, newCookies ->
+                commitCookies(newCookies, sharedPreferences!!.edit())
+                this.selectedCategory = selectedCategory
+                if (selectedCategory >= 0 && spinner != null) spinner!!.setSelection(selectedCategory)
+                titleText!!.text = SpannableStringBuilder(title)
+                editor!!.render(html)
+            }
+        } else  {
+            editor!!.render()
+        }
+
         supportActionBar!!.setDisplayHomeAsUpEnabled(true)
 
-        sharedPreferences = getSharedPreferences("cookie_jar", Context.MODE_PRIVATE)
+        val typedValue = TypedValue()
+        val theme = theme
+        theme.resolveAttribute(R.attr.primaryTextColor, typedValue, true)
+
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.new_article_menu, menu)
+        if (categories.size > 0) {
+            menuInflater.inflate(R.menu.new_article_categories_menu, menu)
+            spinner = menu!!.findItem(R.id.category_spinner).actionView as Spinner
+            val adapter = CategorySpinnerAdapter(this, R.id.category_spinner, categories)
+            adapter.setDropDownViewResource(R.layout.category_spinner_layout)
+            spinner!!.adapter = adapter
+            spinner!!.onItemSelectedListener = CategorySpinnerSelectListener()
+            spinner!!.visibility = View.VISIBLE
+
+            if (selectedCategory >= 0) spinner!!.setSelection(selectedCategory)
+        } else {
+            menuInflater.inflate(R.menu.new_article_menu, menu)
+        }
         return true;
     }
 
@@ -119,7 +166,7 @@ class ArticleEditorActivity : AppCompatActivity() {
                     createSnackbar("제목과 내용을 모두 입력해 주세요", titleText!!)
                     return true
                 }
-                boardFetcher.writeArticle(currentBoard, title, targetSrl, article, cookies) { success, error, articleId, newCookies ->
+                boardFetcher.writeArticle(currentBoard, title, targetSrl, categorySrl, article, cookies) { success, error, articleId, newCookies ->
                     if (success) {
                         val intent = Intent()
                         intent.putExtra("articleId", articleId)
@@ -187,5 +234,17 @@ class ArticleEditorActivity : AppCompatActivity() {
 
         }
 
+    }
+
+    inner class CategorySpinnerSelectListener : AdapterView.OnItemSelectedListener {
+        override fun onNothingSelected(parent: AdapterView<*>?) {
+
+        }
+
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+            val currentItem = this@ArticleEditorActivity.spinner!!.getItemAtPosition(position) as Pair<String, String>
+            currentCategory = currentItem.r
+            categorySrl = currentItem.l
+        }
     }
 }

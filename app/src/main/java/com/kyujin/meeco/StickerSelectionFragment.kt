@@ -90,10 +90,10 @@ class StickerSelectionFragment : DialogFragment(), OnItemClickListener {
 
         view.post {
             Log.i(TAG, "Recycler View Width: " + view.measuredWidth)
-            val columnCount = (view.width / 160.0).toInt()
-            recyclerView!!.layoutManager = GridLayoutManager(context, columnCount)
+            val stickerSize = (view.width / 5)
+            recyclerView!!.layoutManager = GridLayoutManager(context, 5)
 
-            recyclerViewAdapter = StickerRecylclerAdapter(stickerDetailsHolder, this)
+            recyclerViewAdapter = StickerRecylclerAdapter(stickerDetailsHolder,  stickerSize - 10,this)
             recyclerView!!.adapter = recyclerViewAdapter!!
         }
     }

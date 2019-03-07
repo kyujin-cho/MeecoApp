@@ -3,23 +3,20 @@ package com.kyujin.meeco
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Bitmap
-import android.net.Uri
-import android.os.AsyncTask
 import android.util.Log
-import com.github.kittinunf.fuel.Fuel
 import com.github.kittinunf.fuel.core.*
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.fuel.httpPost
-import com.github.kittinunf.fuel.httpUpload
 import com.github.kittinunf.fuel.json.responseJson
 import com.google.gson.annotations.SerializedName
 import com.helger.css.ECSSVersion
 import com.helger.css.reader.CSSReaderDeclarationList
 import okhttp3.MediaType
-import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import org.json.JSONObject
 import org.jsoup.Jsoup
+import org.unbescape.Unbescape
+import org.unbescape.html.HtmlEscape
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -31,7 +28,6 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.net.URL
 import javax.xml.parsers.DocumentBuilderFactory
 
 interface ImageUploadInterface {
@@ -73,12 +69,13 @@ class ImageResponse {
 }
 
 class BoardFetcher {
-    fun fetchNormal(boardId: String, category: String, pageNum: Int, f: (articles: ArrayList<NormalRowInfo>) -> Unit) {
+    fun fetchNormal(boardId: String, cookies: HashMap<String, String>, category: String, pageNum: Int, f: (articles: ArrayList<NormalRowInfo>) -> Unit) {
         operator fun Regex.contains(text: CharSequence): Boolean = this.matches(text)
         var url = "https://meeco.kr/index.php?mid=$boardId&page=$pageNum"
         if (category.isNotBlank()) url += "&category=$category"
         url
             .httpGet()
+            .header("Cookie", generateCookieString(cookies))
             .responseString { request, response, result ->
                 val obj = Jsoup.parse(result.get())
                 val hasCategory = obj.select(".bt_ctg").isNotEmpty()
@@ -140,7 +137,7 @@ class BoardFetcher {
                                 infoDiv[2].text().toInt(),
                                 replyCount,
                                 it.select("span.list_title > span.list_icon2.image").isNotEmpty(),
-                                it.select("span.list_title > span.list_icon2.secret").isNotEmpty()
+                                it.select("span.list_title > span.list_icon2.secret").isNotEmpty() && infoDiv[0].text() == "******"
                             )
                         )
                     }
@@ -149,7 +146,7 @@ class BoardFetcher {
             }
     }
 
-    fun fetchGalleryList(boardId: String, category: String, pageNum: Int, f: (images: ArrayList<GalleryRowInfo>) -> Unit) {
+    fun fetchGalleryList(boardId: String, cookies: HashMap<String, String>, category: String, pageNum: Int, f: (images: ArrayList<GalleryRowInfo>) -> Unit) {
         operator fun Regex.contains(text: CharSequence): Boolean = this.matches(text)
         val urlRegex = """background-image ?: ?url\((https?:\/\/meeco\.kr\/[^\)]+\));""".toRegex()
         var url = "https://meeco.kr/index.php?mid=$boardId&page=$pageNum"
@@ -157,6 +154,7 @@ class BoardFetcher {
 
         url
             .httpGet()
+            .header("Cookie", generateCookieString(cookies))
             .responseString { request, response, result ->
                 val obj = Jsoup.parse(result.get())
                 val hasCategory = obj.select(".bt_ctg").isNotEmpty()
@@ -247,13 +245,14 @@ class BoardFetcher {
                 val newCookies = HashMap<String, String>()
                 val obj = Jsoup.parse(result.get())
                 val hasCategory = obj.select(".bt_ctg").isNotEmpty()
-                val infoLis = obj.select("div.atc_info > ul > li")
+                val infoList = obj.select("div.atc_info > ul > li")
                 var category = ""
                 var categoryColor = ""
                 val innerHTML = obj.selectFirst("div.atc_body > div.xe_content")
                 val replys = obj.select("div.cmt_list > article.cmt_unit")
                 var informationName = ""
                 var informationValue = ""
+                var articleWriterId = ""
 
                 cookies.forEach { t, u -> newCookies[t] = u }
                 updateCookie(newCookies, response.header("set-cookie"))
@@ -282,6 +281,11 @@ class BoardFetcher {
                     category = obj.selectFirst("span.atc_ctg").text()
                     categoryColor = obj.selectFirst("span.atc_ctg > a").attr("style").split("#")[1]
                 }
+
+                if (obj.selectFirst("div.atc_info > span.nickname > a > span") != null) {
+                    articleWriterId = obj.selectFirst("div.atc_info > span.nickname > a > span").className().replace("member_", "")
+                }
+
                 val replyList = ArrayList<ReplyInfo>()
                 replys.forEach {
                     it.select("div.xe_content a").forEach {
@@ -304,6 +308,7 @@ class BoardFetcher {
                         articleId,
                         if (it.select("img.pf_img").isNotEmpty()) it.selectFirst("img.pf_img").attr("src") else "",
                         it.selectFirst("span.nickname").text(),
+                        if (cookieString.isNotBlank()) it.selectFirst("span.nickname").className().replace("nickname member_", "") else "",
                         it.selectFirst("span.date").text(),
                         it.selectFirst("div.xe_content").text(),
                         it.selectFirst("span.cmt_vote_up").text().toInt(),
@@ -315,15 +320,17 @@ class BoardFetcher {
                 f(ArticleInfo(
                     boardId,
                     articleId,
+                    obj.selectFirst("li.list_bt_board").text(),
                     category,
                     categoryColor,
                     obj.selectFirst("header.atc_hd > h1 > a").text(),
                     if (cookieString.isNotBlank()) obj.selectFirst("div.atc_info > span.nickname > a").text() else obj.selectFirst("div.atc_info > span.nickname").text(),
-                    infoLis[0].text(),
-                    infoLis[1].text().toInt(),
-                    infoLis[2].text().toInt(),
+                    articleWriterId,
+                    infoList[0].text(),
+                    infoList[1].text().toInt(),
+                    infoList[2].text().toInt(),
                     if (obj.select("article div.atc_info img.pf_img").isNotEmpty()) obj.selectFirst("article div.atc_info img.pf_img").attr("src") else "",
-                    obj.selectFirst("button.bt_atc_vote").selectFirst("span.num").text().toInt(),
+                    if (obj.selectFirst("button.bt_atc_vote") != null) obj.selectFirst("button.bt_atc_vote").selectFirst("span.num").text().toInt() else -1,
                     if (obj.select("div.atc_sign_body").isNotEmpty()) obj.selectFirst("div.atc_sign_body").text() else "",
                     obj.selectFirst("div.atc_body > div.xe_content").html(),
                     informationName, informationValue
@@ -363,8 +370,8 @@ class BoardFetcher {
                     .header("Cookie", generateCookieString(cookies))
                     .responseString { postRequest, postResponse, postResult ->
                         val obj = Jsoup.parse(postResult.get())
-                        if (obj.select("div.recheck-pass > div.message.error").isNotEmpty()) {
-                            f(false, obj.selectFirst("div.recheck-pass > div.message.error").text(), null, "")
+                        if (obj.select("div.message.error").isNotEmpty()) {
+                            f(false, obj.selectFirst("div.message.error").text(), null, "")
                         } else {
                             val uid = """member_srl=([0-9]+)""".toRegex()
                                 .find(obj.select("div.mb_area.logged > a")[0]
@@ -402,7 +409,7 @@ class BoardFetcher {
         }
     }
 
-    fun writeReply(boardId: String, articleId: String, replyId: String, replyContent: String, cookies: HashMap<String, String>, f: (success: Boolean, error: String?, newCookies: HashMap<String, String>) -> Unit) {
+    fun writeReply(boardId: String, articleId: String, replyId: String, editCommentId: String, replyContent: String, cookies: HashMap<String, String>, f: (success: Boolean, error: String?, newCookies: HashMap<String, String>) -> Unit) {
         "https://meeco.kr/$boardId/$articleId"
             .httpGet()
             .header("Cookie", generateCookieString(cookies))
@@ -416,7 +423,7 @@ class BoardFetcher {
                     "error_return_url" to "/$boardId/$articleId",
                     "mid" to boardId,
                     "document_srl" to articleId,
-                    "comment_srl" to "0",
+                    "comment_srl" to editCommentId,
                     "_rx_csrf_token" to CSRF,
                     "use_editor" to "Y",
                     "use_html" to "Y",
@@ -449,7 +456,7 @@ class BoardFetcher {
             }
     }
 
-    fun writeStickerReply(boardId: String, articleId: String, replyId: String, csrfToken: String, sticker: StickerInfo, cookies: HashMap<String, String>, f: (success: Boolean, error: String?) -> Unit) {
+    fun writeStickerReply(boardId: String, articleId: String, replyId: String, editCommentId: String, csrfToken: String, sticker: StickerInfo, cookies: HashMap<String, String>, f: (success: Boolean, error: String?) -> Unit) {
         val data =
             """<?xml version="1.0" encoding="utf-8" ?>
                 <methodCall>
@@ -458,7 +465,8 @@ class BoardFetcher {
                         <error_return_url><![CDATA[/$boardId/$articleId]]></error_return_url>
                         <mid><![CDATA[free]]></mid>
                         <document_srl><![CDATA[$articleId]]></document_srl>
-                        <parent_srl><![CDATA[0]]></parent_srl>
+                        <comment_srl><![CDATA[$editCommentId]]></comment_srl>
+                        <parent_srl><![CDATA[$replyId]]></parent_srl>
                         <content><![CDATA[{@sticker:${sticker.stickerId}|${sticker.stickerFileId}}]]></content>
                         <use_html><![CDATA[Y]]></use_html>
                         <module><![CDATA[board]]></module>
@@ -651,7 +659,30 @@ class BoardFetcher {
             }
     }
 
-    fun writeArticle(boardId: String, title: String, targetSrl: String?, html: String, cookies: HashMap<String, String>, f: (success: Boolean, error: String, articleId: String, newCookies: HashMap<String, String>) -> Unit) {
+    fun loadEditArticle(boardId: String, articleId: String, cookies: HashMap<String, String>, f: (selectedCategory: Int, title: String, html: String, csrfToken: String, newCookies: HashMap<String, String>) -> Unit) {
+        "https://meeco.kr/index.php?mid=$boardId&document_srl=$articleId&act=dispBoardWrite"
+            .httpGet()
+            .header("Cookie", generateCookieString(cookies))
+            .responseString { request, response, result ->
+                updateCookie(cookies, response.header("set-cookie"))
+                val obj = Jsoup.parse(result.get())
+                val CSRF = obj.selectFirst("meta[name=\"csrf-token\"]").attr("content")
+
+                val form = obj.selectFirst("form[name=\"write-form\"]")
+                val title = HtmlEscape.unescapeHtml(form.selectFirst("input[name=\"title\"]").attr("value"))
+                val contents = HtmlEscape.unescapeHtml(form.selectFirst("input[name=\"content\"]").attr("value"))
+                var selectedIndex = -1
+                if (obj.selectFirst("select[name=\"category_srl\"]") != null) {
+                    obj.select("select[name=\"category_srl\"] > option").forEachIndexed { index, element ->
+                        if (element.attr("selected") == "selected") selectedIndex = index
+                    }
+                }
+
+                f(selectedIndex, title, contents, CSRF, cookies)
+            }
+    }
+
+    fun writeArticle(boardId: String, title: String, targetSrl: String?, categorySrl: String?, html: String, cookies: HashMap<String, String>, f: (success: Boolean, error: String, articleId: String, newCookies: HashMap<String, String>) -> Unit) {
         "https://meeco.kr/index.php?mid=$boardId&act=dispBoardWrite"
             .httpGet()
             .header("Cookie", generateCookieString(cookies))
@@ -659,24 +690,28 @@ class BoardFetcher {
                 updateCookie(cookies, response.header("set-cookie"))
                 val obj = Jsoup.parse(result.get())
                 val CSRF = obj.selectFirst("meta[name=\"csrf-token\"]").attr("content")
+                val body = hashMapOf(
+                    "_filter" to "insert",
+                    "error_return_url" to "/index.php?mid=$boardId&act=dispBoardWrite",
+                    "act" to "procBoardInsertDocument",
+                    "mid" to boardId,
+                    "content" to html,
+                    "title" to title,
+                    "comment_status" to "ALLOW",
+                    "_rx_csrf_token" to CSRF,
+                    "use_editor" to "Y",
+                    "use_html" to "Y",
+                    "module" to "board",
+                    "_rx_ajax_compat" to "XMLRPC",
+                    "vid" to "",
+                    "document_srl" to (targetSrl?:"0"),
+                    "_saved_doc_message" to "자동 저장된 글이 있습니다. 복구하시겠습니까? 글을 다 쓰신 후 저장하면 자동 저장 본은 사라집니다."
+                )
+                if (categorySrl != null && categorySrl.isNotBlank()) {
+                    body["category_srl"] = categorySrl
+                }
                 "https://meeco.kr"
-                    .httpPost(hashMapOf(
-                        "_filter" to "insert",
-                        "error_return_url" to "/index.php?mid=$boardId&act=dispBoardWrite",
-                        "act" to "procBoardInsertDocument",
-                        "mid" to boardId,
-                        "content" to html,
-                        "title" to title,
-                        "comment_status" to "ALLOW",
-                        "_rx_csrf_token" to CSRF,
-                        "use_editor" to "Y",
-                        "use_html" to "Y",
-                        "module" to "board",
-                        "_rx_ajax_compat" to "XMLRPC",
-                        "vid" to "",
-                        "document_srl" to (targetSrl?:"0"),
-                        "_saved_doc_message" to "자동 저장된 글이 있습니다. 복구하시겠습니까? 글을 다 쓰신 후 저장하면 자동 저장 본은 사라집니다."
-                    ).toList())
+                    .httpPost(body.toList())
                     .header("Cookie", generateCookieString(cookies))
                     .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
                     .header("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1")
@@ -693,4 +728,146 @@ class BoardFetcher {
                     }
             }
     }
+
+    fun deleteArticle(boardId: String, articleId: String, cookies: HashMap<String, String>, f: (success: Boolean, error: String) -> Unit) {
+        "https://meeco.kr/$boardId/$articleId"
+            .httpGet()
+            .header("Cookie", generateCookieString(cookies))
+            .responseString { request, response, result ->
+                updateCookie(cookies, response.header("set-cookie"))
+                val obj = Jsoup.parse(result.get())
+                val CSRF = obj.selectFirst("meta[name=\"csrf-token\"]").attr("content")
+                "https://meeco.kr/"
+                    .httpPost(hashMapOf(
+                        "_filter" to "delete_document",
+                        "error_return_url" to "/index.php",
+                        "act" to "procBoardDeleteDocument",
+                        "mid" to boardId,
+                        "page" to "1",
+                        "document_srl" to articleId,
+                        "module" to "board",
+                        "_rx_ajax_compat" to "XMLRPC",
+                        "_rx_csrf_token" to CSRF,
+                        "vid" to ""
+                ).toList())
+                .header("Cookie", generateCookieString(cookies))
+                .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                .header("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1")
+                .header("Referer", "https://meeco.kr/$boardId/$articleId")
+                .header("X-CSRF-Token", CSRF)
+                .header("X-Requested-With", "XMLHttpRequest")
+                    .responseJson { request, response, result ->
+                        val obj = result.get().obj()
+                        if (obj.getInt("error") == 0) {
+                            f(true, "")
+                        } else {
+                            f(false, obj.getString("message"))
+                        }
+                    }
+            }
+    }
+    fun deleteReply(boardId: String, replyId: String, articleId: String, cookies: HashMap<String, String>, f: (success: Boolean, error: String) -> Unit) {
+        "https://meeco.kr/$boardId/$articleId"
+            .httpGet()
+            .header("Cookie", generateCookieString(cookies))
+            .responseString { request, response, result ->
+                updateCookie(cookies, response.header("set-cookie"))
+                val obj = Jsoup.parse(result.get())
+                val CSRF = obj.selectFirst("meta[name=\"csrf-token\"]").attr("content")
+                "https://meeco.kr/"
+                    .httpPost(hashMapOf(
+                        "_filter" to "delete_comment",
+                        "error_return_url" to "/index.php",
+                        "act" to "procBoardDeleteComment",
+                        "mid" to boardId,
+                        "page" to "1",
+                        "document_srl" to articleId,
+                        "comment_srl" to replyId,
+                        "module" to "board",
+                        "_rx_ajax_compat" to "XMLRPC",
+                        "_rx_csrf_token" to CSRF,
+                        "vid" to ""
+                    ).toList())
+                    .header("Cookie", generateCookieString(cookies))
+                    .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                    .header("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1")
+                    .header("Referer", "https://meeco.kr/$boardId/$articleId")
+                    .header("X-CSRF-Token", CSRF)
+                    .header("X-Requested-With", "XMLHttpRequest")
+                    .responseJson { request, response, result ->
+                        val obj = result.get().obj()
+                        if (obj.getInt("error") == 0) {
+                            f(true, "")
+                        } else {
+                            f(false, obj.getString("message"))
+                        }
+                    }
+            }
+    }
+
+    fun likeArticle(boardId: String, articleId: String, cookies: HashMap<String, String>, f: (success: Boolean, message: String) -> Unit) {
+        "https://meeco.kr/$boardId/$articleId"
+            .httpGet()
+            .header("Cookie", generateCookieString(cookies))
+            .responseString { request, response, result ->
+                updateCookie(cookies, response.header("set-cookie"))
+                val obj = Jsoup.parse(result.get())
+                val CSRF = obj.selectFirst("meta[name=\"csrf-token\"]").attr("content")
+                "https://meeco.kr/"
+                    .httpPost(hashMapOf(
+                        "target_srl" to articleId,
+                        "mid" to boardId,
+                        "cur_mid" to boardId,
+                        "module" to "document",
+                        "act" to "procDocumentVoteUp",
+                        "_rx_ajax_compat" to "XMLRPC",
+                        "_rx_csrf_token" to CSRF,
+                        "vid" to ""
+                    ).toList())
+                    .header("Cookie", generateCookieString(cookies))
+                    .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                    .header("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1")
+                    .header("Referer", "https://meeco.kr/$boardId/$articleId")
+                    .header("X-CSRF-Token", CSRF)
+                    .header("X-Requested-With", "XMLHttpRequest")
+                    .header("Host", "meeco.kr")
+                    .responseJson { request, response, result ->
+                        val obj = result.get().obj()
+                        f (obj.getInt("error") == 0, obj.getString("message"))
+                    }
+            }
+    }
+
+    fun likeReply(boardId: String, articleId: String, replyId: String, cookies: HashMap<String, String>, f: (success: Boolean, message: String) -> Unit) {
+        "https://meeco.kr/$boardId/$articleId"
+            .httpGet()
+            .header("Cookie", generateCookieString(cookies))
+            .responseString { request, response, result ->
+                updateCookie(cookies, response.header("set-cookie"))
+                val obj = Jsoup.parse(result.get())
+                val CSRF = obj.selectFirst("meta[name=\"csrf-token\"]").attr("content")
+                "https://meeco.kr/"
+                    .httpPost(hashMapOf(
+                        "target_srl" to replyId,
+                        "mid" to boardId,
+                        "cur_mid" to boardId,
+                        "module" to "comment",
+                        "act" to "procCommentVoteUp",
+                        "_rx_ajax_compat" to "XMLRPC",
+                        "_rx_csrf_token" to CSRF,
+                        "vid" to ""
+                    ).toList())
+                    .header("Cookie", generateCookieString(cookies))
+                    .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                    .header("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1")
+                    .header("Referer", "https://meeco.kr/$boardId/$articleId")
+                    .header("X-CSRF-Token", CSRF)
+                    .header("X-Requested-With", "XMLHttpRequest")
+                    .responseJson { request, response, result ->
+                        val obj = result.get().obj()
+                        f (obj.getInt("error") == 0, obj.getString("message"))
+                    }
+            }
+    }
+
 }

@@ -23,17 +23,19 @@
                     android:text="TextView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" android:id="@+id/galleryCategoryText"
-                    android:textSize="12sp" android:layout_marginBottom="4dp" android:bufferType="spannable"/>
+                    android:textSize="12sp" android:layout_marginBottom="4dp" android:bufferType="spannable"
+                    android:textColor="?attr/secondaryTextColor"/>
             <TextView
                     android:text="TextView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" android:id="@+id/galleryTitleText"
-                    android:textColor="@android:color/black" android:textSize="16sp" android:layout_marginBottom="8dp"/>
+                    android:textColor="?attr/primaryTextColor" android:textSize="16sp"
+                    android:layout_marginBottom="8dp"/>
             <TextView
                     android:text="TextView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" android:id="@+id/galleryPreviewText"
-                    android:layout_weight="1"/>
+                    android:layout_weight="1" android:textColor="?attr/secondaryTextColor"/>
             <View
                     android:id="@+id/divider5"
                     android:layout_width="match_parent"
@@ -49,27 +51,28 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/galleryNickNameText"
                         android:layout_weight="1"
-                        android:textSize="10sp"/>
+                        android:textSize="10sp" android:textColor="?attr/secondaryTextColor"/>
                 <TextView
                         android:text="TextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/galleryTimeText"
-                        android:layout_weight="1" android:textSize="10sp"/>
+                        android:layout_weight="1" android:textSize="10sp" android:textColor="?attr/secondaryTextColor"/>
                 <TextView
                         android:text="TextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/galleryViewCountText"
-                        android:layout_weight="1" android:textSize="10sp"/>
+                        android:layout_weight="1" android:textSize="10sp" android:textColor="?attr/secondaryTextColor"/>
                 <TextView
                         android:text="TextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/galleryLikeText"
-                        android:layout_weight="1" android:textSize="10sp"/>
+                        android:layout_weight="1" android:textSize="10sp" android:textColor="?attr/secondaryTextColor"/>
                 <TextView
                         android:text="TextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/galleryReplyCountText"
-                        android:layout_weight="1" android:textSize="10sp" android:textAlignment="viewEnd"/>
+                        android:layout_weight="1" android:textSize="10sp" android:textAlignment="viewEnd"
+                        android:textColor="?attr/secondaryTextColor"/>
             </LinearLayout>
         </LinearLayout>
     </android.support.v7.widget.CardView>

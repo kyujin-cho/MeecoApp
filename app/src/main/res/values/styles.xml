@@ -1,12 +1,22 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.DarkActionBar">
         <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="primaryTextColor">#33343B</item>
+        <item name="secondaryTextColor">#8033343B</item>
+        <item name="backgroundCardColor">#FFFF</item>
+        <item name="dividerColor">#F2F2F3</item>
+        <item name="articleExtraInfoBackground">#E7E7E7</item>
+        <item name="changeNightMode">@drawable/baseline_brightness_3_24</item>
+        <item name="webViewBackground">@color/backgroundColor</item>
+        <item name="android:windowBackground">@color/backgroundColor</item>
     </style>
+
+
     <style name="AppTheme.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
@@ -24,5 +34,9 @@
     <style name="AppTheme.Slide">
         <item name="android:windowEnterAnimation">@anim/slide_up</item>
         <item name="android:windowExitAnimation">@anim/slide_down</item>
+    </style>
+    <style name="ActivityTheme.Primary.Base.Light" parent="Theme.AppCompat.Light">
+    </style>
+    <style name="ActivityTheme.Primary.Base.Dark"  parent="Theme.AppCompat">
     </style>
 </resources>

@@ -1,19 +1,21 @@
 package com.kyujin.meeco
 
 import android.app.Activity
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
-import android.os.SharedMemory
-import android.support.design.widget.Snackbar
 import android.support.design.widget.NavigationView
 import android.support.v4.view.GravityCompat
-import android.support.v4.view.MenuItemCompat
-import android.support.v4.view.ScrollingView
 import android.support.v4.widget.SwipeRefreshLayout
 import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AppCompatActivity
+import android.support.v7.app.AppCompatDelegate
 import android.view.Menu
 import android.view.MenuItem
 import kotlinx.android.synthetic.main.activity_main.*
@@ -26,8 +28,6 @@ import android.widget.*
 import com.jakewharton.processphoenix.ProcessPhoenix
 import com.securepreferences.SecurePreferences
 import com.squareup.picasso.Picasso
-import com.squareup.picasso.Request
-
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
     val boardFetcher = BoardFetcher()
@@ -43,16 +43,31 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     var passwordPreferences: SecurePreferences? = null
     var sharedPreferences: SharedPreferences? = null
     var loginCredentials: Pair<String, String>? = null
+    var categories: ArrayList<Pair<String, String>>? = null
     var uid = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val isNightMode = getSharedPreferences("sharedPrefs", Context.MODE_PRIVATE).getBoolean("isNightMode", false)
+        if (isNightMode) {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+        } else {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+        }
+
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
+        fab.visibility = View.GONE
         fab.setOnClickListener { view ->
             val intent = Intent(this, ArticleEditorActivity::class.java)
             intent.putExtra("boardId", currentBoard)
+            if (categories != null && categories!!.size > 0) {
+                val newList = ArrayList<Pair<String, String>>()
+                categories!!.subList(1, categories!!.size).forEach { newList.add(it) }
+                intent.putExtra("categories", newList)
+            }
+
             startActivityForResult(intent, RequestCode.NEW_ARTICLE)
         }
 
@@ -69,7 +84,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         passwordPreferences = SecurePreferences(this)
 
 
-
         val navigationView = findViewById<NavigationView>(R.id.nav_view)
         val menu = navigationView.menu
         val headerView = navigationView.getHeaderView(0)
@@ -78,6 +92,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         val navBarUserNameText = headerView.findViewById<TextView>(R.id.navBarUserNameText)
         val navBarNickNameText = headerView.findViewById<TextView>(R.id.navBarNickNameText)
         val navBarProfileImg = headerView.findViewById<ImageView>(R.id.navBarProfileIcon)
+
 
         if (passwordPreferences!!.getString("userName", "").isNotBlank()) {
             val loginCredentials = Pair(
@@ -88,6 +103,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             boardFetcher.tryLogin(loginCredentials.l, loginCredentials.r) { success, error, cookies, uid ->
                 if (success && cookies != null) {
                     Log.i("MainActivity", "Successfully logged in as " + uid)
+                    fab.visibility = View.VISIBLE
                     runOnUiThread {
                         val editor = sharedPreferences!!.edit()
                         cookies.forEach { t, u ->
@@ -121,6 +137,43 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                         editor.putString("userName", "")
                         editor.putString("password", "")
                         editor.commit()
+                    }
+                }
+            }
+
+            if (intent != null) {
+                when (intent.action) {
+                    Intent.ACTION_VIEW -> {
+                        val url = intent.data!!.toString().replace("http://mecco.kr", "").replace("https://meeco.kr", "")
+                        var boardId = ""
+                        var articleId = ""
+                        var pathTypeRegex = "/([a-z0-9A-Z]+)/([0-9]+).?".toRegex()
+
+                        if (url.contains("index.php")) {
+                            url.replace("/index.php?", "").split("&").map { it.split("=") }.forEach {
+                                if (it[0] == "mid") boardId = it[1]
+                                if (it[0] == "document_srl") articleId = it[1]
+                            }
+                        } else if (pathTypeRegex.matches(url)) {
+                            val (b, a) = pathTypeRegex.find(url)!!.destructured
+                            boardId = b
+                            articleId = a
+                        } else {
+                            val browserIntent = Intent("android.intent.action.VIEW", Uri.parse("http://"))
+                            val resolveInfo = packageManager.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
+
+                            val intent = Intent(Intent.ACTION_VIEW, intent.data!!)
+                            intent.setClassName(resolveInfo.activityInfo.packageName, resolveInfo.activityInfo.name)
+                            startActivity(intent)
+                        }
+
+                        if (boardId.isNotBlank() && articleId.isNotBlank()) {
+                            val intent = Intent(this, ArticleActivity::class.java)
+                            intent.putExtra("boardId", boardId)
+                            intent.putExtra("articleId", articleId)
+                            startActivity(intent)
+                        }
+
                     }
                 }
             }
@@ -172,18 +225,31 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         menuInflater.inflate(R.menu.main, menu)
         this.spinner = menu.findItem(R.id.category_spinner).actionView as Spinner
         Log.i("MainActivity", "Options Menu created")
-        fetchArticles {
-            title = it[0].boardName
-            it.forEach { x -> viewArticleHolder.add(x) }
-            myAdapter!!.notifyDataSetChanged()
+        currentBoard = ""
+        changeBoard(getSharedPreferences("sharedPrefs", Context.MODE_PRIVATE).getString("lastViewedBoard", "mini") ?: "mini") {}
+//        findViewById<ImageButton>(R.id.changeDayOrNightButton).setOnClickListener {
+//            val currentTheme = resources.configuration.uiMode.and(Configuration.UI_MODE_NIGHT_MASK)
+//            when (currentTheme) {
+//                Configuration.UI_MODE_NIGHT_YES -> {
+//                    AppCompatDelegate.setDefaultNightMode(
+//                        AppCompatDelegate.MODE_NIGHT_NO
+//                    )
+//                    getSharedPreferences("sharedPrefs", Context.MODE_PRIVATE).edit().putBoolean("isNightMode", false).apply()
+//                }
+//                else -> {
+//                    AppCompatDelegate.setDefaultNightMode(
+//                        AppCompatDelegate.MODE_NIGHT_YES
+//                    )
+//
+//                    getSharedPreferences("sharedPrefs", Context.MODE_PRIVATE).edit().putBoolean("isNightMode", true).apply()
+//                }
+//            }
+//            val intent = Intent(this, MainActivity::class.java)
+//            finish()
+//            startActivity(intent)
+//        }
+        // Activate it later, till I find answer to the strange UI bug
 
-            runOnUiThread {
-                val adapter = CategorySpinnerAdapter(this, R.id.category_spinner, it[0].categories)
-                adapter.setDropDownViewResource(R.layout.category_spinner_layout)
-                spinner!!.onItemSelectedListener = CategorySpinnerSelectListener()
-                spinner!!.adapter = adapter
-            }
-        }
         return true
     }
 
@@ -199,20 +265,27 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.nav_mini -> changeBoard("mini")
-            R.id.nav_news -> changeBoard("news")
-            R.id.nav_free -> changeBoard("free")
-            R.id.nav_market -> changeBoard("market")
-            R.id.nav_contact -> changeBoard("contact")
-            R.id.nav_notice -> changeBoard("notice")
-            R.id.nav_gallery -> changeBoard("gallery")
+            R.id.nav_mini -> changeBoard("mini") {}
+            R.id.nav_news -> changeBoard("news") {}
+            R.id.nav_free -> changeBoard("free") {}
+            R.id.nav_market -> changeBoard("market") {}
+            R.id.nav_contact -> changeBoard("contact") {}
+            R.id.nav_notice -> changeBoard("notice") {}
+            R.id.nav_gallery -> changeBoard("gallery") {}
             R.id.nav_login -> {
                 if (this.loginCredentials != null) {
                     val editor = passwordPreferences!!.edit()
                     editor.putString("userName", "")
                     editor.putString("password", "")
-                    editor.apply()
-                    ProcessPhoenix.triggerRebirth(this)
+                    editor.commit()
+
+                    val mStartActivity = Intent(this, MainActivity::class.java)
+                    val mPendingIntentId = 123456
+                    val mPendingIntent = PendingIntent.getActivity(this, mPendingIntentId, mStartActivity, PendingIntent.FLAG_CANCEL_CURRENT)
+                    val mgr = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                    mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, mPendingIntent)
+                    System.exit(0)
+
                 } else {
                     val intent = Intent(this, LoginActivity::class.java)
                     startActivity(intent)
@@ -225,7 +298,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     fun fetchArticles(f: (ArrayList<NormalRowInfo>) -> Unit) {
-        boardFetcher.fetchNormal(currentBoard, currentCategory, currentPage) {
+        boardFetcher.fetchNormal(currentBoard, if(sharedPreferences != null) getCookieFromSharedPrefs(sharedPreferences!!) else hashMapOf(), currentCategory, currentPage) {
             runOnUiThread {
                 f(it)
             }
@@ -233,7 +306,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     fun fetchGalleryArticles(f: (ArrayList<GalleryRowInfo>) -> Unit) {
-        boardFetcher.fetchGalleryList(currentBoard, currentCategory, currentPage) {
+        boardFetcher.fetchGalleryList(currentBoard, if(sharedPreferences != null) getCookieFromSharedPrefs(sharedPreferences!!) else hashMapOf(), currentCategory, currentPage) {
             runOnUiThread {
                 f(it)
             }
@@ -259,8 +332,12 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
-    fun changeBoard(boardId: String) {
-        if (boardId == currentBoard) return
+    fun changeBoard(boardId: String, f: (() -> Unit)) {
+        if (boardId == currentBoard) {
+            f()
+            return
+        }
+        getSharedPreferences("sharedPrefs", Context.MODE_PRIVATE).edit().putString("lastViewedBoard", boardId).apply()
         if (boardId != "gallery") {
             if (currentBoard == "gallery") {
                 myAdapter = NormalRecyclerAdapter(this, viewArticleHolder)
@@ -278,11 +355,13 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
                 if (it[0].categories.isNotEmpty()) {
                     val adapter = CategorySpinnerAdapter(this, R.id.category_spinner, it[0].categories)
+                    categories = it[0].categories
                     adapter.setDropDownViewResource(R.layout.category_spinner_layout)
                     spinner!!.adapter = adapter
                     spinner!!.onItemSelectedListener = CategorySpinnerSelectListener()
                     spinner!!.visibility = View.VISIBLE
                 } else {
+                    categories = null
                     spinner!!.adapter = null
                     spinner!!.onItemSelectedListener = null
                     spinner!!.visibility = View.GONE
@@ -292,6 +371,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             swipeRefreshLayout = findViewById(R.id.articleSwipeRefreshLayout)
             swipeRefreshLayout!!.setOnRefreshListener {
                 currentPage = 1
+
                 fetchArticles {
                     viewArticleHolder.clear()
                     it.forEach { x -> viewArticleHolder.add(x) }
@@ -310,6 +390,32 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             currentCategory = ""
             galleryArticleHolder.clear()
 
+            swipeRefreshLayout = findViewById(R.id.articleSwipeRefreshLayout)
+            swipeRefreshLayout!!.setOnRefreshListener {
+                currentPage = 1
+
+                fetchGalleryArticles {
+                    title = it[0].boardName
+                    it.forEach { item -> galleryArticleHolder.add(item) }
+                    myAdapter!!.notifyDataSetChanged()
+
+                    if (it[0].categories.isNotEmpty()) {
+                        val adapter = CategorySpinnerAdapter(this, R.id.category_spinner, it[0].categories)
+                        categories = it[0].categories
+                        adapter.setDropDownViewResource(R.layout.category_spinner_layout)
+                        spinner!!.adapter = adapter
+                        spinner!!.onItemSelectedListener = CategorySpinnerSelectListener()
+                        spinner!!.visibility = View.VISIBLE
+                    } else {
+                        categories = null
+                        spinner!!.adapter = null
+                        spinner!!.onItemSelectedListener = null
+                        spinner!!.visibility = View.GONE
+                    }
+
+                }
+            }
+
             fetchGalleryArticles {
                 title = it[0].boardName
                 it.forEach { item -> galleryArticleHolder.add(item) }
@@ -317,11 +423,13 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
                 if (it[0].categories.isNotEmpty()) {
                     val adapter = CategorySpinnerAdapter(this, R.id.category_spinner, it[0].categories)
+                    categories = it[0].categories
                     adapter.setDropDownViewResource(R.layout.category_spinner_layout)
                     spinner!!.adapter = adapter
                     spinner!!.onItemSelectedListener = CategorySpinnerSelectListener()
                     spinner!!.visibility = View.VISIBLE
                 } else {
+                    categories = null
                     spinner!!.adapter = null
                     spinner!!.onItemSelectedListener = null
                     spinner!!.visibility = View.GONE
@@ -330,6 +438,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             }
 
         }
+        f()
     }
 
     inner class ArticleScrollListener: RecyclerView.OnScrollListener() {
@@ -344,7 +453,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                         if (it.isNotEmpty()) {
                             it.forEach { x -> galleryArticleHolder.add(x) }
                             this@MainActivity.myAdapter!!.notifyDataSetChanged()
-                            title = it[0].boardId
+                            title = it[0].boardName
                         }
                     }
                 } else {

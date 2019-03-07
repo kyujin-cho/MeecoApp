@@ -41,12 +41,13 @@
                         android:text="TextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/replyNickNameText"
-                        android:layout_weight="1" android:bufferType="spannable"/>
+                        android:layout_weight="1" android:bufferType="spannable"
+                        android:textColor="?attr/secondaryTextColor"/>
                 <TextView
                         android:text="TextView"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content" android:id="@+id/inReplyToText" android:layout_weight="1"
-                        android:textSize="10sp"/>
+                        android:textSize="10sp" android:textColor="?attr/secondaryTextColor"/>
                 <LinearLayout
                         android:orientation="horizontal"
                         android:layout_width="wrap_content"
@@ -55,17 +56,19 @@
                             android:text="TextView"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content" android:id="@+id/timeText" android:layout_weight="1"
-                            android:textSize="10sp" android:layout_marginRight="4dp"/>
+                            android:textSize="10sp" android:layout_marginRight="4dp"
+                            android:textColor="?attr/secondaryTextColor"/>
                     <TextView
                             android:text="/"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content" android:id="@+id/textView2" android:layout_weight="1"
-                            android:textSize="10sp"/>
+                            android:textSize="10sp" android:textColor="?attr/secondaryTextColor"/>
                     <TextView
                             android:text="TextView"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content" android:id="@+id/likesText" android:layout_weight="1"
-                            android:layout_marginLeft="4dp" android:textSize="10sp"/>
+                            android:layout_marginLeft="4dp" android:textSize="10sp"
+                            android:textColor="?attr/secondaryTextColor"/>
                 </LinearLayout>
                 <LinearLayout
                         android:orientation="horizontal"
@@ -76,7 +79,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content" android:id="@+id/replyContentText"
                             android:layout_weight="1"
-                            android:layout_marginTop="8dp" android:textColor="@android:color/black"/>
+                            android:layout_marginTop="8dp" android:textColor="?attr/primaryTextColor"/>
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

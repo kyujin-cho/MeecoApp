@@ -28,6 +28,7 @@ import java.io.IOException
 import java.net.MalformedURLException
 import android.text.format.DateFormat
 import android.text.format.Time
+import pl.droidsonroids.gif.GifDrawable
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.jar.Manifest
