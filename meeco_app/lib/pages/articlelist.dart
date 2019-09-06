@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:meeco_app/pages/article.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart' as p2r;
 
 import '../types.dart';
@@ -43,9 +44,6 @@ class _ListWidgetState extends State<ListWidget> {
 
   _ListWidgetState(this.boardId);
 
-  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
-    new GlobalKey<RefreshIndicatorState>();
-
   @override
   void initState() {
     super.initState();
@@ -62,11 +60,12 @@ class _ListWidgetState extends State<ListWidget> {
     });
   }
 
-  void loadMore() {
+  Future<Null> _loadMore() async {
     if (isLoading) return;
     isLoading = true;
     pageNum++;
-    loadPage();
+    await loadPage();
+    _refreshController.loadComplete();
   }
 
   Future<Null> _onRefresh() async {
@@ -74,51 +73,96 @@ class _ListWidgetState extends State<ListWidget> {
     present = 0;
     pageNum = 1;
     await this.loadPage();
+    _refreshController.refreshCompleted();
   }
 
-  Future<Null> _onLoading() async { 
-
+  Route _createRoute(NormalRowInfo article) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => ArticlePage(articleRow: article),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return child;
+      }
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return p2r.SmartRefresher(
       enablePullUp: true,
       enablePullDown: true,
-      header: p2r.WaterDropHeader(),
+      header: p2r.WaterDropHeader(
+        complete: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const Icon(
+                Icons.done,
+                color: Colors.grey,
+              ),
+              Container(
+                width: 15.0,
+              ),
+              Text(
+                "Complete",
+                style: TextStyle(color: Colors.grey),
+              )
+            ],
+          ),
+        failed: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const Icon(
+                Icons.close,
+                color: Colors.grey,
+              ),
+              Container(
+                width: 15.0,
+              ),
+              Text("Failed", style: TextStyle(color: Colors.grey))
+            ],
+          )
+      ),
       footer: p2r.CustomFooter(
         builder: (context, mode) {
           Widget body;
 
           switch (mode) {
             case p2r.LoadStatus.idle:
-            body = Text('Pull up load');
+            body = PlatformText('Pull up load');
             break;
-            // case p2r.LoadStatus.loading:
-            // body = 
+            case p2r.LoadStatus.loading:
+            body = CupertinoActivityIndicator();
+            break;
+            case p2r.LoadStatus.failed:
+            body = PlatformText('Failed to load! Click to retry');
+            break;
+            case p2r.LoadStatus.canLoading:
+            body = PlatformText('Release to load more');
+            break;
+            case p2r.LoadStatus.noMore:
+            body = PlatformText('End of board');
+            break;
           }
+
+          return Container(
+            height: 55.0,
+            child: Center(child: body),
+          );
         },
+      ),
+      controller: _refreshController,
+      onRefresh: _onRefresh,
+      onLoading: _loadMore,
+      child: ListView.builder(
+        itemBuilder: (context, index) {
+          return ListTile(
+            title: PlatformText(present > 0 ? items[index].title : ''),
+            onTap: () {
+              Navigator.of(context).push(_createRoute(items[index]));
+            },
+          );
+        },
+        itemCount: present,
       ),
     );
   }
-
-  // @override
-  // Widget build(BuildContext context) {
-  //   return new NotificationListener<ScrollNotification>(
-  //     onNotification: (ScrollNotification scrollInfo) {
-  //       if (scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) loadMore();
-  //     },
-  //     child: RefreshIndicator(
-  //       key: _refreshIndicatorKey,
-  //       onRefresh: _refresh,
-  //       child: new ListView.builder(
-  //       itemCount: present,
-  //       itemBuilder: (context, index) {
-  //         return ListTile(title: PlatformText(present > 0 ? items[index].title : ''));
-  //       },
-  //     ),
-  //     ),
-  //   );
-  // }
 }
