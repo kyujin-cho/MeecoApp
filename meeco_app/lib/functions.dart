@@ -38,7 +38,7 @@ class Fetcher {
     if (hasCategory) {
       categories = document.querySelectorAll('div.list_category > ul > li')
                     .where((obj) => obj.getElementsByTagName('a')[0].attributes['href'].split('/').contains('category'))
-                    .map((obj) => Pair<String, String>(obj.getElementsByTagName('a')[0].attributes['href'].split('/').last, obj.text))
+                    .map((obj) => Pair<String, String>(obj.getElementsByTagName('a')[0].attributes['href'].split('/').last, obj.text.trim()))
                     .toList();
       categories.insert(0, Pair("", "전체"));
     }
@@ -54,7 +54,7 @@ class Fetcher {
       var articleId = '';
 
       if (hasCategory) {
-        category = obj.querySelector("span.list_ctg").text;
+        category = obj.querySelector("span.list_ctg").text.trim();
         var styleStr = obj.querySelector("span.list_ctg").attributes['style'];
         if (styleStr.length > 0) categoryColor = styleStr.split("#")[1];
         else categoryColor = "616BAF";
@@ -72,7 +72,7 @@ class Fetcher {
 
       articles.add(NormalRowInfo(
         boardId, boardName, articleId, category, categoryColor, categories, titleAnchor.attributes['title'],
-        infoDiv[0].text, infoDiv[1].text, int.parse(infoDiv[2].text), replyCount,
+        infoDiv[0].text.trim(), infoDiv[1].text.trim(), int.parse(infoDiv[2].text), replyCount,
         obj.querySelector('span.list_title > span.list_icon2.image') != null,
         obj.querySelector('span.list_title > span.list_icon2.secret') != null && infoDiv[0].text == '******'
       ));
@@ -121,6 +121,11 @@ class Fetcher {
       if (img.attributes['src'].startsWith('//')) img.attributes['src'] = 'https:' + img.attributes['src'];
     }
 
+    if (hasCategory) {
+      category = document.querySelector("span.atc_ctg").text.trim();
+      categoryColor = document.querySelector("span.atc_ctg > span").attributes['style'].split("#")[1];
+    }
+
     if (document.querySelector('div.atc_info > span.nickname > a > span') != null) {
       articleWriterId = document.querySelector('div.atc_info > span.nickname > a > span').className.replaceAll('member_', '');
     }
@@ -148,13 +153,18 @@ class Fetcher {
       replyContainer.add(ReplyInfo(
         reply.id.replaceAll('comment_', ''), boardId, reply.querySelector('div.pf_wrap > span.writer') != null,
         articleId, reply.querySelector('img.pf_img') != null ? reply.querySelector('img.pf_img').attributes['src'] : '',
-        reply.querySelector('span.nickname').text,
+        reply.querySelector('span.nickname').text.trim(),
         document.getElementsByClassName('bt_logout').length > 0 ? reply.querySelector('span.nickname').className.replaceAll('nickname member_', '') : '',
         reply.querySelector('span.date').text, reply.querySelector('div.xe_content').text, 
         int.parse(reply.querySelector('span.cmt_vote_up').text), 
         reply.querySelector('div.cmt_to') != null ? reply.querySelector('div.cmt_to').text : '',
         reply.querySelector('div.xe_content').innerHtml
       ));
+    }
+
+    var profileImageUrl = '';
+    if (document.querySelector("article img.pf_img") != null) {
+      profileImageUrl = document.querySelector("article img.pf_img").attributes['src'];
     }
 
     return ArticleInfo(
@@ -164,12 +174,11 @@ class Fetcher {
       category,
       categoryColor,
       document.querySelector("header.atc_hd > h1 > a").text,
-      document.getElementsByClassName('bt_logout').length > 0 ? document.querySelector("div.atc_info > span.nickname > a").text : document.querySelector("div.atc_info > span.nickname").text,
+      document.getElementsByClassName('bt_logout').length > 0 ? document.querySelector("div.atc_info > span.nickname > a").text.trim() : document.querySelector("div.atc_info > span.nickname").text.trim(),
       articleWriterId,
       infoList[0].text,
       replyContainer,
-      int.parse(infoList[1].text),
-      document.querySelector("article div.atc_info img.pf_img") != null ? document.querySelector("article div.atc_info img.pf_img").attributes['src']: '',
+      int.parse(infoList[1].text), profileImageUrl,
       document.querySelector("button.bt_atc_vote") != null ? int.parse(document.querySelector("button.bt_atc_vote").querySelector("span.num").text) : -1,
       document.querySelector("div.atc_sign_body") != null ? document.querySelector("div.atc_sign_body").text: '',
       document.querySelector("div.atc_body > div.xe_content").innerHtml,
@@ -223,6 +232,7 @@ class Fetcher {
                   <style>
                     body {
                       color: $color !important;
+                      width: 100%;
                     }
                     img, iframe {
                       max-width: 100%;
@@ -235,5 +245,9 @@ class Fetcher {
                 </body>
             </html>
     ''';
+  }
+
+  static Color hexToColor(String code) {
+    return new Color(int.parse(code.substring(1, 7), radix: 16) + 0xFF000000);
   }
 }

@@ -19,7 +19,7 @@ class ArticleListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
-      appBar: PlatformAppBar(title: PlatformText(boardName)),
+      appBar: PlatformAppBar(title: Text(boardName)),
       body: ListWidget(boardId: boardId),
     );
   }
@@ -85,6 +85,28 @@ class _ListWidgetState extends State<ListWidget> {
     );
   }
 
+  Widget _determineTrailing(NormalRowInfo row) {
+    if (row.replyCount > 0) { 
+      var icon;
+      if (Theme.of(context).platform == TargetPlatform.iOS) {
+        icon = CupertinoIcons.conversation_bubble;
+      } else {
+        icon = Icons.chat_bubble;
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Icon(icon, size: 16.0, color: Colors.black),
+          Text(row.replyCount.toString())
+        ],
+      );
+    } else {
+      return Text('');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return p2r.SmartRefresher(
@@ -127,19 +149,19 @@ class _ListWidgetState extends State<ListWidget> {
 
           switch (mode) {
             case p2r.LoadStatus.idle:
-            body = PlatformText('Pull up load');
+            body = Text('Pull up load');
             break;
             case p2r.LoadStatus.loading:
             body = CupertinoActivityIndicator();
             break;
             case p2r.LoadStatus.failed:
-            body = PlatformText('Failed to load! Click to retry');
+            body = Text('Failed to load! Click to retry');
             break;
             case p2r.LoadStatus.canLoading:
-            body = PlatformText('Release to load more');
+            body = Text('Release to load more');
             break;
             case p2r.LoadStatus.noMore:
-            body = PlatformText('End of board');
+            body = Text('End of board');
             break;
           }
 
@@ -152,12 +174,38 @@ class _ListWidgetState extends State<ListWidget> {
       controller: _refreshController,
       onRefresh: _onRefresh,
       onLoading: _loadMore,
-      child: ListView.builder(
+      child: ListView.separated(
+        separatorBuilder: (context, index) => Divider(
+          height: 0.0,
+          color: Colors.grey,
+        ),
         itemBuilder: (context, index) {
+          var row = items[index];
           return ListTile(
-            title: PlatformText(present > 0 ? items[index].title : ''),
+            title: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Text(
+                  present > 0 ? '${row.category} ' : '',
+                  style: present > 0 ? TextStyle(color: Fetcher.hexToColor('#${row.categoryColor}'), fontSize: 16.0) : null,
+                ),
+                Text(
+                  present > 0 ? row.title : '',
+                  style: TextStyle(fontSize: 16.0),
+                ),
+              ],
+            ),
+            subtitle: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(row.nickname),
+                Text(' · '),
+                Text(row.time)
+              ],
+            ),
+            trailing: _determineTrailing(row),
             onTap: () {
-              Navigator.of(context).push(_createRoute(items[index]));
+              Navigator.of(context).push(_createRoute(row));
             },
           );
         },
