@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
@@ -184,6 +187,61 @@ class Fetcher {
       document.querySelector("div.atc_body > div.xe_content").innerHtml,
       informationName, informationValue
     );
+  }
+
+  static Future<Map<String, String>> getImageUploadRequiredData(String boardId) async {
+    var dio = await prepareDio();
+    var response = await dio.get('https://meeco.kr/index.php?mid=$boardId&act=dispBoardWrite');
+    var document = parse(response.data.toString());
+    var regex = RegExp('xe_editor_sequence: ([0-9]+)');
+    var csrfToken = document.querySelector('meta[name="csrf-token"]').attributes['content'];
+
+    if (!regex.hasMatch(response.data.toString())) throw GenericException('editorSequence not found');
+    var editorSequence = regex.firstMatch(response.data.toString()).group(1);
+
+    return {
+      'editorSequence': editorSequence,
+      'csrfToken': csrfToken
+    };
+  }
+
+  static Future<Map<String, String>> uploadIamge({
+    String fileName, 
+    String imageDataAsBase64,
+    String boardId,
+    String targetSrl,
+    String editorSequence,
+    String csrfToken
+  }) async {
+    var dio = await prepareDio();
+    var nonce = 'T${new DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}';
+    var image = base64.decode(imageDataAsBase64);
+
+    var headers = {
+      'X-CSRF-Token': csrfToken,
+      'X-Requested-With': 'XMLHttpRequest'
+    };
+    var formData = FormData.from({
+      'nonce': nonce,
+      'act': 'procFileUpload',
+      'mid': boardId,
+      'editor_sequence': editorSequence,
+      'Filedata': UploadFileInfo.fromBytes(image, fileName)
+    });
+    if (targetSrl != null) {
+      formData['targetSrl'] = targetSrl;
+    }
+
+    var response = await dio.post('https://meeco.kr/', data: formData, options: Options(
+      headers: headers,
+      responseType: ResponseType.json
+    ));
+
+    if (response.data['error'] != 0) throw GenericException('Got error while uploading');
+    return {
+      'url': 'https://img.meeco.kr${response.data['download_url']}',
+      'targetSrl': response.data['upload_target_srl']
+    };
   }
 
   static Future<String> tryLogin({

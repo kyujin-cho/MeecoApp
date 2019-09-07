@@ -76,7 +76,7 @@ class MeecoApp extends StatelessWidget {
             title: 'MeecoApp',
             home: PlatformScaffold(
               appBar: PlatformAppBar(
-                title: new PlatformText('MeecoApp'),
+                title: new Text('미니기기 코리아'),
               ),
 //              bottomNavBar: PlatformNavBar(
 //                items: [

@@ -1,6 +1,9 @@
 class LoginException implements Exception {
   String error;
-  LoginException(String error) {
-    this.error = error;
-  }
+  LoginException(this.error);
+}
+
+class GenericException implements Exception {
+  String error;
+  GenericException(this.error);
 }

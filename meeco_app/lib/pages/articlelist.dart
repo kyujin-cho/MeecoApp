@@ -76,9 +76,9 @@ class _ListWidgetState extends State<ListWidget> {
     _refreshController.refreshCompleted();
   }
 
-  Route _createRoute(NormalRowInfo article) {
+  Route _createRoute(Widget page) {
     return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => ArticlePage(articleRow: article),
+      pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         return child;
       }
@@ -109,108 +109,125 @@ class _ListWidgetState extends State<ListWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return p2r.SmartRefresher(
-      enablePullUp: true,
-      enablePullDown: true,
-      header: p2r.WaterDropHeader(
-        complete: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const Icon(
-                Icons.done,
-                color: Colors.grey,
+    return Stack(
+      children: <Widget>[
+        p2r.SmartRefresher(
+          enablePullUp: true,
+          enablePullDown: true,
+          header: p2r.WaterDropHeader(
+            complete: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Icon(
+                    Icons.done,
+                    color: Colors.grey,
+                  ),
+                  Container(
+                    width: 15.0,
+                  ),
+                  Text(
+                    "Complete",
+                    style: TextStyle(color: Colors.grey),
+                  )
+                ],
               ),
-              Container(
-                width: 15.0,
-              ),
-              Text(
-                "Complete",
-                style: TextStyle(color: Colors.grey),
+            failed: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Icon(
+                    Icons.close,
+                    color: Colors.grey,
+                  ),
+                  Container(
+                    width: 15.0,
+                  ),
+                  Text("Failed", style: TextStyle(color: Colors.grey))
+                ],
               )
-            ],
           ),
-        failed: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const Icon(
-                Icons.close,
-                color: Colors.grey,
-              ),
-              Container(
-                width: 15.0,
-              ),
-              Text("Failed", style: TextStyle(color: Colors.grey))
-            ],
-          )
-      ),
-      footer: p2r.CustomFooter(
-        builder: (context, mode) {
-          Widget body;
+          footer: p2r.CustomFooter(
+            builder: (context, mode) {
+              Widget body;
 
-          switch (mode) {
-            case p2r.LoadStatus.idle:
-            body = Text('Pull up load');
-            break;
-            case p2r.LoadStatus.loading:
-            body = CupertinoActivityIndicator();
-            break;
-            case p2r.LoadStatus.failed:
-            body = Text('Failed to load! Click to retry');
-            break;
-            case p2r.LoadStatus.canLoading:
-            body = Text('Release to load more');
-            break;
-            case p2r.LoadStatus.noMore:
-            body = Text('End of board');
-            break;
-          }
+              switch (mode) {
+                case p2r.LoadStatus.idle:
+                body = Text('Pull up load');
+                break;
+                case p2r.LoadStatus.loading:
+                body = CupertinoActivityIndicator();
+                break;
+                case p2r.LoadStatus.failed:
+                body = Text('Failed to load! Click to retry');
+                break;
+                case p2r.LoadStatus.canLoading:
+                body = Text('Release to load more');
+                break;
+                case p2r.LoadStatus.noMore:
+                body = Text('End of board');
+                break;
+              }
 
-          return Container(
-            height: 55.0,
-            child: Center(child: body),
-          );
-        },
-      ),
-      controller: _refreshController,
-      onRefresh: _onRefresh,
-      onLoading: _loadMore,
-      child: ListView.separated(
-        separatorBuilder: (context, index) => Divider(
-          height: 0.0,
-          color: Colors.grey,
-        ),
-        itemBuilder: (context, index) {
-          var row = items[index];
-          return ListTile(
-            title: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                Text(
-                  present > 0 ? '${row.category} ' : '',
-                  style: present > 0 ? TextStyle(color: Fetcher.hexToColor('#${row.categoryColor}'), fontSize: 16.0) : null,
-                ),
-                Text(
-                  present > 0 ? row.title : '',
-                  style: TextStyle(fontSize: 16.0),
-                ),
-              ],
-            ),
-            subtitle: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(row.nickname),
-                Text(' · '),
-                Text(row.time)
-              ],
-            ),
-            trailing: _determineTrailing(row),
-            onTap: () {
-              Navigator.of(context).push(_createRoute(row));
+              return Container(
+                height: 55.0,
+                child: Center(child: body),
+              );
             },
-          );
-        },
-        itemCount: present,
-      ),
+          ),
+          controller: _refreshController,
+          onRefresh: _onRefresh,
+          onLoading: _loadMore,
+          child: ListView.separated(
+            separatorBuilder: (context, index) => Divider(
+              height: 0.0,
+              color: Colors.grey,
+            ),
+            itemBuilder: (context, index) {
+              var row = items[index];
+              return ListTile(
+                title: RichText(
+                  text: TextSpan(
+                    text: '',
+                    children: [
+                      TextSpan(
+                        text: present > 0 ? '${row.category} ' : '',
+                        style: present > 0 ? TextStyle(color: Fetcher.hexToColor('#${row.categoryColor}'), fontSize: 16.0) : null,
+                      ),
+                      TextSpan(
+                        text: present > 0 ? row.title : '',
+                        style: TextStyle(fontSize: 16.0, color: Colors.black),
+                      ),
+                    ]
+                  )
+                ),
+                subtitle: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(row.nickname),
+                    Text(' · '),
+                    Text(row.time)
+                  ],
+                ),
+                trailing: _determineTrailing(row),
+                onTap: () {
+                  Navigator.of(context).push(_createRoute(ArticlePage(articleRow: row)));
+                },
+              );
+            },
+            itemCount: present,
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomRight,
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: FloatingActionButton(
+              child: Icon(Icons.create),
+              backgroundColor: Colors.blue,
+              onPressed: () {},
+            ),
+          ),
+        )
+      ],
     );
   }
 }

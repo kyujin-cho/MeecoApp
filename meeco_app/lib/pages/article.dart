@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:meeco_app/functions.dart';
 import 'package:meeco_app/types.dart';
@@ -37,64 +38,101 @@ class _ArticleState extends State<ArticleWidget> {
   }
 
   _ArticleState(this.articleRow);
+
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
       appBar: PlatformAppBar(title: PlatformText(articleRow.boardName)),
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            ListTile(
-              leading: CircleAvatar(
-                radius: 20,
-                backgroundImage: NetworkImage(article != null ? article.profileImageUrl : '')
-              ),
-              contentPadding: EdgeInsets.symmetric(horizontal: 10.0),
-              title: Text(
-                articleRow.title,
-                style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
-              ),
-              subtitle: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(articleRow.nickname),
-                  Text(' · '),
-                  Text(articleRow.time)
+      body: Stack(
+        children: <Widget>[
+          SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                ListTile(
+                  leading: CircleAvatar(
+                    radius: 20,
+                    backgroundImage: article != null ? NetworkImage(article.profileImageUrl) : AssetImage('assets/ic_meeco_icon.png')
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 10.0),
+                  title: Text(
+                    articleRow.title,
+                    style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(articleRow.nickname),
+                      Text(' · '),
+                      Text(articleRow.time)
+                    ],
+                  ),
+                ),
+                Divider(
+                  color: Colors.grey,
+                ),
+                HtmlWidget(
+                  article != null ? article.rawHTML : ''
+                ),
+                Divider(
+                  color: Colors.grey,
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.0),
+                  child: Text(
+                    '댓글 ${articleRow.replyCount} 개',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                Divider(
+                  color: Colors.grey,
+                ),
+                ListView.separated(
+                  separatorBuilder: (context, index) => Divider(
+                    color: Colors.grey
+                  ),
+                  primary: false,
+                  shrinkWrap: true,
+                  itemBuilder: (context, index) => ReplyWidget(article != null && article.replies.length > 0 ? article.replies[index] : null),
+                  itemCount: article != null ? article.replies.length : 0,
+                ),
+                Container(
+                  height: 80,
+                )
+              ],
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Padding(
+              padding: EdgeInsets.all(34),
+              child: SpeedDial(
+                marginRight: 0,
+                marginBottom: 2,
+                animatedIcon: AnimatedIcons.menu_close,
+                animatedIconTheme: IconThemeData(size: 22.0),
+                overlayOpacity: 0,
+                tooltip: 'Menu',
+                heroTag: 'speed-dial-hero-tag',
+                children: [
+                  SpeedDialChild(
+                    child: Icon(Icons.reply_all),
+                    backgroundColor: Colors.blue,
+                    label: 'Write reply',
+                    onTap: () => {}
+                  ),
+                  SpeedDialChild(
+                    child: Icon(Icons.thumb_up),
+                    backgroundColor: Colors.red,
+                    label: 'Like',
+                    onTap: () => {}
+                  )
                 ],
               ),
-            ),
-            Divider(
-              color: Colors.grey,
-            ),
-            HtmlWidget(
-              article != null ? article.rawHTML : ''
-            ),
-            Divider(
-              color: Colors.grey,
-            ),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.0),
-              child: Text(
-                '댓글 ${articleRow.replyCount} 개',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            Divider(
-              color: Colors.grey,
-            ),
-            ListView.separated(
-              separatorBuilder: (context, index) => Divider(
-                color: Colors.grey
-              ),
-              primary: false,
-              shrinkWrap: true,
-              itemBuilder: (context, index) => ReplyWidget(article != null && article.replies.length > 0 ? article.replies[index] : null),
-              itemCount: article != null ? article.replies.length : 0,
             )
-          ],
-        ),
+          )
+        ],
       )
     );
   }

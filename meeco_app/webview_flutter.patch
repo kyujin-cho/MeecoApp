@@ -1,0 +1,215 @@
+--- ./android/src/main/java/io/flutter/plugins/webviewflutter/FlutterWebView.java	2019-08-17 07:39:25.000000000 +0900
++++ ./android/src/main/java/io/flutter/plugins/webviewflutter/FlutterWebView.java	2019-09-07 19:39:46.000000000 +0900
+@@ -66,7 +66,11 @@
+     }
+     if (params.containsKey("initialUrl")) {
+       String url = (String) params.get("initialUrl");
+-      webView.loadUrl(url);
++      if (url.contains("://")) {
++        webView.loadUrl(url);
++      } else {
++        webView.loadUrl("file:///android_asset/flutter_assets/" + url);
++      }
+     }
+   }
+ 
+@@ -101,6 +105,9 @@
+       case "loadUrl":
+         loadUrl(methodCall, result);
+         break;
++      case "loadAssetFile":
++        loadAssetFile(methodCall, result);
++        break;
+       case "updateSettings":
+         updateSettings(methodCall, result);
+         break;
+@@ -151,6 +158,12 @@
+     result.success(null);
+   }
+ 
++  private void loadAssetFile(MethodCall methodCall, Result result) {
++    String url = (String) methodCall.arguments;
++    webView.loadUrl("file:///android_asset/flutter_assets/" + url);
++    result.success(null);
++  }
++
+   private void canGoBack(Result result) {
+     result.success(webView.canGoBack());
+   }
+--- ./ios/Classes/FlutterWebView.h	2019-03-19 05:03:13.000000000 +0900
++++ ./ios/Classes/FlutterWebView.h	2019-09-07 19:40:41.000000000 +0900
+@@ -12,13 +12,13 @@
+ - (instancetype)initWithFrame:(CGRect)frame
+                viewIdentifier:(int64_t)viewId
+                     arguments:(id _Nullable)args
+-              binaryMessenger:(NSObject<FlutterBinaryMessenger>*)messenger;
++              registrar:(NSObject<FlutterPluginRegistrar>*)registrar;
+ 
+ - (UIView*)view;
+ @end
+ 
+ @interface FLTWebViewFactory : NSObject <FlutterPlatformViewFactory>
+-- (instancetype)initWithMessenger:(NSObject<FlutterBinaryMessenger>*)messenger;
++- (instancetype)initWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar;
+ @end
+ 
+ NS_ASSUME_NONNULL_END
+--- ./ios/Classes/FlutterWebView.m	2019-08-17 07:39:25.000000000 +0900
++++ ./ios/Classes/FlutterWebView.m	2019-09-07 19:43:19.000000000 +0900
+@@ -7,13 +7,15 @@
+ #import "JavaScriptChannelHandler.h"
+ 
+ @implementation FLTWebViewFactory {
++  NSObject<FlutterPluginRegistrar>* _registrar;
+   NSObject<FlutterBinaryMessenger>* _messenger;
+ }
+ 
+-- (instancetype)initWithMessenger:(NSObject<FlutterBinaryMessenger>*)messenger {
++- (instancetype)initWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+   self = [super init];
+   if (self) {
+-    _messenger = messenger;
++    _registrar = registrar;
++    _messenger = registrar.messenger;
+   }
+   return self;
+ }
+@@ -28,7 +30,7 @@
+   FLTWebViewController* webviewController = [[FLTWebViewController alloc] initWithFrame:frame
+                                                                          viewIdentifier:viewId
+                                                                               arguments:args
+-                                                                        binaryMessenger:_messenger];
++                                                                        registrar:_registrar];
+   return webviewController;
+ }
+ 
+@@ -42,17 +44,21 @@
+   // The set of registered JavaScript channel names.
+   NSMutableSet* _javaScriptChannelNames;
+   FLTWKNavigationDelegate* _navigationDelegate;
++  NSObject<FlutterPluginRegistrar>* _registrar;
+ }
+ 
+ - (instancetype)initWithFrame:(CGRect)frame
+                viewIdentifier:(int64_t)viewId
+                     arguments:(id _Nullable)args
+-              binaryMessenger:(NSObject<FlutterBinaryMessenger>*)messenger {
++                    registrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+   if ([super init]) {
+     _viewId = viewId;
++    _registrar = registrar;
+ 
+     NSString* channelName = [NSString stringWithFormat:@"plugins.flutter.io/webview_%lld", viewId];
+     _channel = [FlutterMethodChannel methodChannelWithName:channelName binaryMessenger:messenger];
++    _channel = [FlutterMethodChannel methodChannelWithName:channelName
++                                           binaryMessenger:registrar.messenger];
+     _javaScriptChannelNames = [[NSMutableSet alloc] init];
+ 
+     WKUserContentController* userContentController = [[WKUserContentController alloc] init];
+@@ -83,7 +89,11 @@
+ 
+     NSString* initialUrl = args[@"initialUrl"];
+     if ([initialUrl isKindOfClass:[NSString class]]) {
+-      [self loadUrl:initialUrl];
++      if ([initialUrl rangeOfString:@"://"].location == NSNotFound) {
++        [self loadAssetFile:initialUrl];
++      } else {
++        [self loadUrl:initialUrl];
++      }
+     }
+   }
+   return self;
+@@ -98,6 +108,8 @@
+     [self onUpdateSettings:call result:result];
+   } else if ([[call method] isEqualToString:@"loadUrl"]) {
+     [self onLoadUrl:call result:result];
++  } else if ([[call method] isEqualToString:@"loadAssetFile"]) {
++    [self onLoadAssetFile:call result:result];
+   } else if ([[call method] isEqualToString:@"canGoBack"]) {
+     [self onCanGoBack:call result:result];
+   } else if ([[call method] isEqualToString:@"canGoForward"]) {
+@@ -143,6 +155,17 @@
+   }
+ }
+ 
++- (void)onLoadAssetFile:(FlutterMethodCall*)call result:(FlutterResult)result {
++  NSString* url = [call arguments];
++  if (![self loadAssetFile:url]) {
++    result([FlutterError errorWithCode:@"loadAssetFile_failed"
++                               message:@"Failed parsing the URL"
++                               details:[NSString stringWithFormat:@"URL was: '%@'", url]]);
++  } else {
++    result(nil);
++  }
++}
++
+ - (void)onCanGoBack:(FlutterMethodCall*)call result:(FlutterResult)result {
+   BOOL canGoBack = [_webView canGoBack];
+   result([NSNumber numberWithBool:canGoBack]);
+@@ -333,6 +356,20 @@
+   return true;
+ }
+ 
++- (bool)loadAssetFile:(NSString*)url {
++  NSString* key = [_registrar lookupKeyForAsset:url];
++  NSURL* nsUrl = [[NSBundle mainBundle] URLForResource:key withExtension:nil];
++  if (!nsUrl) {
++    return false;
++  }
++  if (@available(iOS 9.0, *)) {
++    [_webView loadFileURL:nsUrl allowingReadAccessToURL:[NSURL URLWithString:@"file:///"]];
++  } else {
++    return false;
++  }
++  return true;
++}
++
+ - (void)registerJavaScriptChannels:(NSSet*)channelNames
+                         controller:(WKUserContentController*)userContentController {
+   for (NSString* channelName in channelNames) {
+--- ./ios/Classes/WebViewFlutterPlugin.m	2019-08-15 04:25:33.000000000 +0900
++++ ./ios/Classes/WebViewFlutterPlugin.m	2019-09-07 19:43:37.000000000 +0900
+@@ -9,8 +9,7 @@
+ @implementation FLTWebViewFlutterPlugin
+ 
+ + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+-  FLTWebViewFactory* webviewFactory =
+-      [[FLTWebViewFactory alloc] initWithMessenger:registrar.messenger];
++  FLTWebViewFactory* webviewFactory = [[FLTWebViewFactory alloc] initWithRegistrar:registrar];
+   [registrar registerViewFactory:webviewFactory withId:@"plugins.flutter.io/webview"];
+   [FLTCookieManager registerWithRegistrar:registrar];
+ }
+--- ./lib/platform_interface.dart	2019-08-17 07:39:25.000000000 +0900
++++ ./lib/platform_interface.dart	2019-09-07 19:47:26.000000000 +0900
+@@ -70,6 +70,11 @@
+         "WebView updateSettings is not implemented on the current platform");
+   }
+ 
++  Future<void> loadAssetFile(String url) {
++    throw UnimplementedError(
++        "WebView loadAssetFile is not implemented on the current platform");
++  }
++
+   /// Accessor to the current URL that the WebView is displaying.
+   ///
+   /// If no URL was ever loaded, returns `null`.
+--- ./lib/webview_flutter.dart	2019-08-17 07:39:25.000000000 +0900
++++ ./lib/webview_flutter.dart	2019-09-07 19:45:37.000000000 +0900
+@@ -503,6 +503,17 @@
+     return _webViewPlatformController.loadUrl(url, headers);
+   }
+ 
++  /// Loads the specified file.
++  ///
++  /// `url` must not be null.
++  Future<void> loadAssetFile(String url) async {
++    assert(url != null);
++    // TODO(amirh): remove this on when the invokeMethod update makes it to stable Flutter.
++    // https://github.com/flutter/flutter/issues/26431
++    // ignore: strong_mode_implicit_dynamic_method
++    return _webViewPlatformController.loadAssetFile(url);
++  }
++
+   /// Accessor to the current URL that the WebView is displaying.
+   ///
+   /// If [WebView.initialUrl] was never specified, returns `null`.
