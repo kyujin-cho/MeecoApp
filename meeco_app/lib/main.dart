@@ -8,20 +8,9 @@ import 'package:meeco_app/bloc/bloc.dart';
 import 'package:meeco_app/bloc/event.dart';
 import 'package:meeco_app/bloc/repository.dart';
 import 'package:meeco_app/bloc/state.dart';
-import 'package:meeco_app/functions.dart';
-import 'package:meeco_app/pages/articlelist.dart';
-import 'package:meeco_app/types.dart';
-
-final Map<String, List<Pair<String, String>>> categories = {
-  '커뮤니티': [
-    Pair('news', 'IT 소식'), Pair('mini', '미니기기 / 음향'), Pair('free', '자유 게시판'), 
-    Pair('gallery', '갤러리'), Pair('market', '장터 게시판'), Pair('humor', '유머 게시판')
-  ],
-  '운영 참여': [
-    Pair('contact', '신고 / 건의'), Pair('notice', '공지사항'), Pair('Dispute', '분쟁 조정')
-  ]
-};
-
+import './pages/mainpage.dart';
+import './pages/todaypage.dart';
+import './pages/settingpage.dart';
 
 class SimpleBlocDelegate extends BlocDelegate {
   @override
@@ -53,17 +42,12 @@ void main() {
         return AuthenticationBloc(userRepository: userRepository)
           ..dispatch(AppStarted());
       },
-      child: MeecoApp(userRepository: userRepository),
+      child: MeecoApp(),
     ),
   );
 }
 
 class MeecoApp extends StatelessWidget {
-  final UserRepository userRepository;
-
-  MeecoApp({Key key, @required this.userRepository}): super(key: key);
-  // This widget is the root of your application.
-
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthenticationBloc, AuthenticationState>(
@@ -72,28 +56,78 @@ class MeecoApp extends StatelessWidget {
           return SplashPage();
         }
         if (state is AuthenticationAuthenticated || state is AuthenticationUnauthenticated) {
-          return PlatformApp(
-            title: 'MeecoApp',
-            home: PlatformScaffold(
-              appBar: PlatformAppBar(
-                title: new Text('미니기기 코리아'),
-              ),
-//              bottomNavBar: PlatformNavBar(
-//                items: [
-//                  BottomNavigationBarItem(),
-//                  BottomNavigationBarItem(),
-//                ],
-//              ),
-              iosContentPadding: true,
-              body: MainPage(),
-            )
-          );
+          return MainApp();
         }
         if (state is AuthenticationLoading) {
           return LoadingIndicator();
         }
         return null;
       },
+    );
+  }
+}
+
+class MainApp extends StatefulWidget {
+  @override
+  _MainAppState createState() => _MainAppState();
+}
+
+class _MainAppState extends State<MainApp> { 
+  int _selectedIndex = 0;
+
+  static List<Widget> _widgetOptions = <Widget>[
+    new MainPage(),
+    new TodayPage(),
+    new SettingPage()
+  ];
+
+  static List<Widget> _titleOptions = <Widget>[
+    Text('Boards', style: TextStyle(color: Colors.black)),
+    Text('Today', style: TextStyle(color: Colors.black)),
+    Text('Settings', style: TextStyle(color: Colors.black))
+  ];
+  static List<Widget> _solidIconOptions = <Widget>[
+    Icon(CupertinoIcons.location_solid),
+    Icon(CupertinoIcons.heart_solid),
+    Icon(CupertinoIcons.settings_solid)
+  ];
+  static List<Widget> _iconOptions = <Widget>[
+    Icon(CupertinoIcons.location),
+    Icon(CupertinoIcons.heart),
+    Icon(CupertinoIcons.settings)
+  ];
+
+  void _onNavItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PlatformApp(
+      title: 'MeecoApp',
+      android: (context) => MaterialAppData(
+        theme: ThemeData.light()
+      ),
+      home: PlatformScaffold(
+        appBar: PlatformAppBar(
+          backgroundColor: Colors.white,
+          title: _titleOptions.elementAt(_selectedIndex),
+        ),
+        bottomNavBar: PlatformNavBar(
+          currentIndex: _selectedIndex,
+          itemChanged: _onNavItemTapped,
+          items: Iterable<int>.generate(_titleOptions.length)
+                  .map<BottomNavigationBarItem>((index) => BottomNavigationBarItem(
+                      title: _titleOptions.elementAt(index), 
+                      icon: _iconOptions.elementAt(index),
+                      activeIcon: _solidIconOptions.elementAt(index)
+                  )).toList(),
+        ),
+        iosContentPadding: true,
+        body: _widgetOptions.elementAt(_selectedIndex),
+      )
     );
   }
 }
@@ -116,36 +150,4 @@ class LoadingIndicator extends StatelessWidget {
   Widget build(BuildContext context) => Center(
     child: CircularProgressIndicator(),
   );
-}
-
-class MainPage extends StatelessWidget {
-  Route _createRoute(Pair<String, String> boardInfo) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => ArticleListPage(boardInfo),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return child;
-      }
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    List<Widget> widgets = [];
-    for (var key in categories.keys) {
-      // TODO: Create header for category
-      widgets.addAll(categories[key].map((pair) => 
-        ListTile(
-          title: PlatformText(pair.right),
-          onTap: () {
-            Navigator.of(context).push(_createRoute(pair));
-          },
-        )
-      ).toList());
-    }
-    return PlatformScaffold(
-      body: ListView(
-        children: widgets,
-      )
-    );
-  }
 }

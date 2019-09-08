@@ -42,7 +42,8 @@ class _ArticleState extends State<ArticleWidget> {
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
-      appBar: PlatformAppBar(title: PlatformText(articleRow.boardName)),
+      backgroundColor: Colors.white,
+      appBar: PlatformAppBar(title: PlatformText(articleRow.boardName, style: TextStyle(color: Colors.black))),
       body: Stack(
         children: <Widget>[
           SingleChildScrollView(

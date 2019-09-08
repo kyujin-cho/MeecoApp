@@ -19,7 +19,10 @@ class ArticleListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
-      appBar: PlatformAppBar(title: Text(boardName)),
+      appBar: PlatformAppBar(
+        backgroundColor: Colors.white,
+        title: Text(boardName, style: TextStyle(color: Colors.black))
+      ),
       body: ListWidget(boardId: boardId),
     );
   }

@@ -213,3 +213,16 @@
    /// Accessor to the current URL that the WebView is displaying.
    ///
    /// If [WebView.initialUrl] was never specified, returns `null`.
+
+--- ./lib/src/webview_method_channel.dart 
++++ ./lib/src/webview_method_channel.dart
+@@ -61,6 +61,9 @@
+  @override
+  Future<bool> canGoBack() => _channel.invokeMethod<bool>("canGoBack");
+
++ @override
++ Future<void> loadAssetFile(String url) => _channel.invokeMethod<void>("loadAssetFile", url);
++ 
+  @override
+  Future<bool> canGoForward() => _channel.invokeMethod<bool>("canGoForward");
+

@@ -47,7 +47,10 @@ class ArticleWriter extends StatelessWidget {
     });
 
     return PlatformScaffold(
-      appBar: PlatformAppBar(title: Text(articleId == null ? '새 글 작성' : '글 편집')),
+      appBar: PlatformAppBar(
+        title: Text(articleId == null ? '새 글 작성' : '글 편집', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+      ),
       body: Builder(
         builder: (context) {
           return WebView(
