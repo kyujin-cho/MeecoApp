@@ -58,41 +58,36 @@ class SettingPage extends StatelessWidget {
     );
   }
 
-  void _onLogoutTapped() {
-
+  void _onLogoutTapped(BuildContext context) {
+    final _authenticationBloc = BlocProvider.of<AuthenticationBloc>(context);
+    _authenticationBloc.dispatch(LoggedOut());
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<LoginBloc>(
-      builder: (context) => LoginBloc(
-        authenticationBloc: BlocProvider.of<AuthenticationBloc>(context),
-        userRepository: userRepository
-      ),
-      child: BlocBuilder<AuthenticationBloc, AuthenticationState>(
-        builder: (context, state) {
-          if (state is AuthenticationUnauthenticated) {
-            return Center(
-              child: PlatformButton(
-                child: Text('Log In'),
-                onPressed: () => _onLoginTapped(context),
-              )
-            );
-          }
-          if (state is AuthenticationAuthenticated) {
-            return Center(
-              child: PlatformButton(
-                child: Text('Log Out'),
-                onPressed: _onLogoutTapped,
-              ),
-            );
-          }
-          if (state is AuthenticationLoading) {
-            return LoadingIndicator();
-          }
-          return null;
-        },
-      ),
+    return BlocBuilder<AuthenticationBloc, AuthenticationState>(
+      builder: (context, state) {
+        if (state is AuthenticationUnauthenticated) {
+          return Center(
+            child: PlatformButton(
+              child: Text('Log In'),
+              onPressed: () => _onLoginTapped(context),
+            )
+          );
+        }
+        if (state is AuthenticationAuthenticated) {
+          return Center(
+            child: PlatformButton(
+              child: Text('Log Out'),
+              onPressed: () => _onLogoutTapped(context),
+            ),
+          );
+        }
+        if (state is AuthenticationLoading) {
+          return LoadingIndicator();
+        }
+        return null;
+      },
     );
   }
 }
@@ -116,7 +111,7 @@ class _LoginState extends State<LoginDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener(
+    return BlocListener<LoginBloc, LoginState>(
       listener: (context, state) {
         if (state is LoginFailure) {
           loginFailed = true;

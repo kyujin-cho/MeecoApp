@@ -1,5 +1,7 @@
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../functions.dart';
 
@@ -26,6 +28,11 @@ class UserRepository {
     /// delete from keystore/keychain
     await storage.delete(key: 'username');
     await storage.delete(key: 'password');
+    
+    var appDocDir = await getApplicationDocumentsDirectory();
+    var cookieJar = PersistCookieJar(dir: appDocDir.absolute.path + '/dioCookie');
+
+    cookieJar.deleteAll();
   }
 
   Future<void> persistUserInfo(String username, String password) async {

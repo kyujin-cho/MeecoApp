@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_flipperkit/flipper_client.dart';
+import 'package:flutter_flipperkit/flutter_flipperkit.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 
 import 'package:meeco_app/bloc/bloc.dart';
@@ -34,16 +36,21 @@ class SimpleBlocDelegate extends BlocDelegate {
 
 
 void main() {
-  BlocSupervisor.delegate = SimpleBlocDelegate();
+  // BlocSupervisor.delegate = SimpleBlocDelegate();
   final userRepository = UserRepository();
+  final AuthenticationBloc authenticationBloc = AuthenticationBloc(userRepository: userRepository);
+  
   runApp(
-    BlocProvider<AuthenticationBloc>(
-      builder: (context) {
-        return AuthenticationBloc(userRepository: userRepository)
-          ..dispatch(AppStarted());
-      },
-      child: MeecoApp(),
-    ),
+    BlocBuilder(
+      bloc: authenticationBloc..dispatch(AppStarted()),
+      builder: (context, tab) => MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthenticationBloc>(builder: (context) => authenticationBloc),
+          BlocProvider<LoginBloc>(builder: (context) => LoginBloc(userRepository: userRepository, authenticationBloc: authenticationBloc))
+        ],
+        child: MeecoApp(),
+      ),
+    )
   );
 }
 

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -10,10 +11,25 @@ import 'package:path_provider/path_provider.dart';
 
 import 'exceptions.dart';
 
+final String PROXY_IP = '192.168.43.99';
+
 class Fetcher {
   static Future<Dio> prepareDio() async {
     var appDocDir = await getApplicationDocumentsDirectory();
     var dio = new Dio();
+    String proxy = Platform.isAndroid ? '$PROXY_IP:8888' : 'localhost:8888';
+
+    // Tap into the onHttpClientCreate callback
+    // to configure the proxy just as we did earlier.
+    (dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate = (client) { 
+      // Hook into the findProxy callback to set the client's proxy.
+      client.findProxy = (uri) => 'PROXY $proxy';
+      
+      // This is a workaround to allow Charles to receive
+      // SSL payloads when your app is running on Android.
+      client.badCertificateCallback = (X509Certificate cert, String host, int port) => Platform.isAndroid;
+    };
+
     dio.interceptors.add(CookieManager(PersistCookieJar(dir: appDocDir.absolute.path + '/dioCookie')));
     dio.options.headers = {
       "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1",
@@ -251,6 +267,22 @@ class Fetcher {
   }) async {
     var dio = persist ? await prepareDio() : new Dio();
     if (!persist) {
+      var cookieJar = DefaultCookieJar();
+      cookieJar.deleteAll();
+      dio.interceptors.add(CookieManager(cookieJar));
+      String proxy = Platform.isAndroid ? '$PROXY_IP:8888' : 'localhost:8888';
+
+      // Tap into the onHttpClientCreate callback
+      // to configure the proxy just as we did earlier.
+      (dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate = (client) { 
+        // Hook into the findProxy callback to set the client's proxy.
+        client.findProxy = (uri) => 'PROXY $proxy';
+        
+        // This is a workaround to allow Charles to receive
+        // SSL payloads when your app is running on Android.
+        client.badCertificateCallback = (X509Certificate cert, String host, int port) => Platform.isAndroid;
+      };
+
       dio.options.headers = {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1",
         "Referer": "https://meeco.kr/"
@@ -260,6 +292,16 @@ class Fetcher {
 
     var document = parse(response.data.toString());
     var csrfToken = document.querySelector('meta[name="csrf-token"]').attributes['content'];
+    
+    var ffForm = document.querySelector('form.ff');
+    if (ffForm == null) {
+    response = await dio.get('https://meeco.kr');
+    document = parse(response.data.toString());
+    var exp = new RegExp(r'member_srl=([0-9]+)');
+    return exp.firstMatch(document.querySelector('div.mb_area.logged > a').attributes['href']).group(1);
+    }
+    var validator = ffForm.querySelector('input[name="xe_validator_id"]');
+
     var body = {
       "error_return_url": "/index.php?mid=mini&act=dispMemberLoginForm",
       "mid": "mini",
@@ -267,17 +309,27 @@ class Fetcher {
       "ruleset": "@login",
       "success_return_url": "https://meeco.kr/mini",
       "act": "procMemberLogin",
-      "xe_validator_id": document.querySelector('form.ff input[name="xe_validator_id"]').attributes['value'],
+      "xe_validator_id": validator.attributes['value'],
       "user_id": username,
       "password": password,
       "_rx_csrf_token": csrfToken,
       "keep_signed": "Y"
     };
-    response = await dio.post('https://meeco.kr/index.php', data: body);
-    document = parse(response.data.toString());
-    if (document.querySelector('div.message.error') != null) {
+    response = await dio.post('https://meeco.kr/index.php', data: body, options: Options(
+      headers: {
+        'X-CSRF-Token': csrfToken
+      },
+      contentType: ContentType.parse("application/x-www-form-urlencoded"),
+      followRedirects: false,
+      validateStatus: (status) { return status < 500; }
+    ));
+
+    if (response.statusCode != 302) {
+      document = parse(response.data.toString());
       throw LoginException(document.querySelector('div.message.error').text);
     }
+    response = await dio.get('https://meeco.kr');
+    document = parse(response.data.toString());
     var exp = new RegExp(r'member_srl=([0-9]+)');
     return exp.firstMatch(document.querySelector('div.mb_area.logged > a').attributes['href']).group(1);
   }

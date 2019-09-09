@@ -36,6 +36,7 @@ class AuthenticationBloc
 
     if (event is LoggedIn) {
       yield AuthenticationLoading();
+      await Fetcher.tryLogin(username: event.username, password: event.password);
       await userRepository.persistUserInfo(event.username, event.password);
       yield AuthenticationAuthenticated();
     }
@@ -69,11 +70,12 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       yield LoginLoading();
 
       try {
-        await userRepository.authenticate(
+        var uid = await userRepository.authenticate(
           username: event.username,
           password: event.password
         );
 
+        print('Logged in with uid $uid');
         authenticationBloc.dispatch(LoggedIn(username: event.username, password: event.password));
         yield LoginInitial();
       } catch (error) {
