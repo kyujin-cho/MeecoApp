@@ -1,11 +1,24 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:meeco_app/bloc/bloc.dart';
+import 'package:meeco_app/bloc/state.dart';
 import 'package:meeco_app/pages/article.dart';
+import 'package:meeco_app/pages/articlewriter.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart' as p2r;
 
 import '../types.dart';
 import '../functions.dart';
+
+Route createRoute(Widget page) {
+  return PageRouteBuilder(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return child;
+    }
+  );
+}
 
 class ArticleListPage extends StatelessWidget {
   String boardId;
@@ -18,12 +31,13 @@ class ArticleListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
-      appBar: PlatformAppBar(
-        backgroundColor: Colors.white,
-        title: Text(boardName, style: TextStyle(color: Colors.black))
+    return BlocBuilder<AuthenticationBloc, AuthenticationState>(
+      builder: (context, state) => PlatformScaffold(
+        appBar: PlatformAppBar(
+          title: Text(boardName, style: TextStyle(color: Colors.black))
+        ),
+        body: ListWidget(boardId: boardId),
       ),
-      body: ListWidget(boardId: boardId),
     );
   }
 }
@@ -79,15 +93,6 @@ class _ListWidgetState extends State<ListWidget> {
     _refreshController.refreshCompleted();
   }
 
-  Route _createRoute(Widget page) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return child;
-      }
-    );
-  }
-
   Widget _determineTrailing(NormalRowInfo row) {
     if (row.replyCount > 0) { 
       var icon;
@@ -112,125 +117,130 @@ class _ListWidgetState extends State<ListWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: <Widget>[
-        p2r.SmartRefresher(
-          enablePullUp: true,
-          enablePullDown: true,
-          header: p2r.WaterDropHeader(
-            complete: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const Icon(
-                    Icons.done,
-                    color: Colors.grey,
-                  ),
-                  Container(
-                    width: 15.0,
-                  ),
-                  Text(
-                    "Complete",
-                    style: TextStyle(color: Colors.grey),
-                  )
-                ],
-              ),
-            failed: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const Icon(
-                    Icons.close,
-                    color: Colors.grey,
-                  ),
-                  Container(
-                    width: 15.0,
-                  ),
-                  Text("Failed", style: TextStyle(color: Colors.grey))
-                ],
-              )
-          ),
-          footer: p2r.CustomFooter(
-            builder: (context, mode) {
-              Widget body;
-
-              switch (mode) {
-                case p2r.LoadStatus.idle:
-                body = Text('Pull up load');
-                break;
-                case p2r.LoadStatus.loading:
-                body = CupertinoActivityIndicator();
-                break;
-                case p2r.LoadStatus.failed:
-                body = Text('Failed to load! Click to retry');
-                break;
-                case p2r.LoadStatus.canLoading:
-                body = Text('Release to load more');
-                break;
-                case p2r.LoadStatus.noMore:
-                body = Text('End of board');
-                break;
-              }
-
-              return Container(
-                height: 55.0,
-                child: Center(child: body),
-              );
-            },
-          ),
-          controller: _refreshController,
-          onRefresh: _onRefresh,
-          onLoading: _loadMore,
-          child: ListView.separated(
-            separatorBuilder: (context, index) => Divider(
-              height: 0.0,
-              color: Colors.grey,
-            ),
-            itemBuilder: (context, index) {
-              var row = items[index];
-              return ListTile(
-                title: RichText(
-                  text: TextSpan(
-                    text: '',
-                    children: [
-                      TextSpan(
-                        text: present > 0 ? '${row.category} ' : '',
-                        style: present > 0 ? TextStyle(color: Fetcher.hexToColor('#${row.categoryColor}'), fontSize: 16.0) : null,
-                      ),
-                      TextSpan(
-                        text: present > 0 ? row.title : '',
-                        style: TextStyle(fontSize: 16.0, color: Colors.black),
-                      ),
-                    ]
-                  )
-                ),
-                subtitle: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return BlocBuilder<AuthenticationBloc, AuthenticationState>(
+      builder: (context, state) {
+        var stackWidgets = <Widget>[
+          p2r.SmartRefresher(
+            enablePullUp: true,
+            enablePullDown: true,
+            header: p2r.WaterDropHeader(
+              complete: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    Text(row.nickname),
-                    Text(' · '),
-                    Text(row.time)
+                    const Icon(
+                      Icons.done,
+                      color: Colors.grey,
+                    ),
+                    Container(
+                      width: 15.0,
+                    ),
+                    Text(
+                      "Complete",
+                      style: TextStyle(color: Colors.grey),
+                    )
                   ],
                 ),
-                trailing: _determineTrailing(row),
-                onTap: () {
-                  Navigator.of(context).push(_createRoute(ArticlePage(articleRow: row)));
-                },
-              );
-            },
-            itemCount: present,
-          ),
-        ),
-        Align(
-          alignment: Alignment.bottomRight,
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: FloatingActionButton(
-              child: Icon(Icons.create),
-              backgroundColor: Colors.blue,
-              onPressed: () {},
+              failed: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    const Icon(
+                      Icons.close,
+                      color: Colors.grey,
+                    ),
+                    Container(
+                      width: 15.0,
+                    ),
+                    Text("Failed", style: TextStyle(color: Colors.grey))
+                  ],
+                )
+            ),
+            footer: p2r.CustomFooter(
+              builder: (context, mode) {
+                Widget body;
+
+                switch (mode) {
+                  case p2r.LoadStatus.idle:
+                  body = Text('Pull up load');
+                  break;
+                  case p2r.LoadStatus.loading:
+                  body = CupertinoActivityIndicator();
+                  break;
+                  case p2r.LoadStatus.failed:
+                  body = Text('Failed to load! Click to retry');
+                  break;
+                  case p2r.LoadStatus.canLoading:
+                  body = Text('Release to load more');
+                  break;
+                  case p2r.LoadStatus.noMore:
+                  body = Text('End of board');
+                  break;
+                }
+
+                return Container(
+                  height: 55.0,
+                  child: Center(child: body),
+                );
+              },
+            ),
+            controller: _refreshController,
+            onRefresh: _onRefresh,
+            onLoading: _loadMore,
+            child: ListView.separated(
+              separatorBuilder: (context, index) => Divider(
+                height: 0.0,
+                color: Colors.grey,
+              ),
+              itemBuilder: (context, index) {
+                var row = items[index];
+                return ListTile(
+                  title: RichText(
+                    text: TextSpan(
+                      text: '',
+                      children: [
+                        TextSpan(
+                          text: present > 0 ? '${row.category} ' : '',
+                          style: present > 0 ? TextStyle(color: Fetcher.hexToColor('#${row.categoryColor}'), fontSize: 16.0) : null,
+                        ),
+                        TextSpan(
+                          text: present > 0 ? row.title : '',
+                          style: TextStyle(fontSize: 16.0, color: Colors.black),
+                        ),
+                      ]
+                    )
+                  ),
+                  subtitle: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(row.nickname),
+                      Text(' · '),
+                      Text(row.time)
+                    ],
+                  ),
+                  trailing: _determineTrailing(row),
+                  onTap: () {
+                    Navigator.of(context).push(createRoute(ArticlePage(articleRow: row)));
+                  },
+                );
+              },
+              itemCount: present,
             ),
           ),
-        )
-      ],
+        ];
+        if (state is AuthenticationAuthenticated) {
+          stackWidgets.add(Align(
+            alignment: Alignment.bottomRight,
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: FloatingActionButton(
+                child: Icon(Icons.create),
+                backgroundColor: Colors.blue,
+                onPressed: () => Navigator.of(context).push(createRoute(ArticleWriter(boardId: boardId))),
+              ),
+            ),
+          ));
+        }
+        return Stack(children: stackWidgets);
+      },
     );
   }
 }

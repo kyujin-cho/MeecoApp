@@ -43,7 +43,7 @@ class _ArticleState extends State<ArticleWidget> {
   Widget build(BuildContext context) {
     return PlatformScaffold(
       backgroundColor: Colors.white,
-      appBar: PlatformAppBar(title: PlatformText(articleRow.boardName, style: TextStyle(color: Colors.black))),
+      appBar: PlatformAppBar(title: PlatformText(articleRow.boardName)),
       body: Stack(
         children: <Widget>[
           SingleChildScrollView(

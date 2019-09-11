@@ -30,7 +30,6 @@ class MainPage extends StatelessWidget {
   Widget build(BuildContext context) {
     List<Widget> widgets = [];
     for (var key in categories.keys) {
-      // TODO: Create header for category
       widgets.addAll(categories[key].map((pair) => 
         ListTile(
           title: PlatformText(pair.right),

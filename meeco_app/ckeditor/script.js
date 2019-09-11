@@ -15,10 +15,7 @@ ClassicEditor.create(document.querySelector("#editor"), {
 
     editor.model.document.on("change:data", () => {
       console.log("The data has changed!");
-      window.webkit.messageHandlers.article.postMessage({
-        event: "ContentChanged",
-        value: editor.getData()
-      });
+      FTarticleChanged.postMessage(editor.getData());
     });
   })
   .catch(error => {
@@ -26,8 +23,5 @@ ClassicEditor.create(document.querySelector("#editor"), {
   });
 
 document.getElementById("title").addEventListener("change", e => {
-  window.webkit.messageHandlers.article.postMessage({
-    event: "TitleChanged",
-    value: e.target.value
-  });
+  FTtitleChanged.postMessage(e.target.value);
 });

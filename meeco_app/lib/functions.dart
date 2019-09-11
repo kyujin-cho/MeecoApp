@@ -11,25 +11,27 @@ import 'package:path_provider/path_provider.dart';
 
 import 'exceptions.dart';
 
-final String PROXY_IP = '192.168.43.99';
+const PROXY_ENABLED = false;
+const PROXY_IP = '192.168.43.99';
 
 class Fetcher {
   static Future<Dio> prepareDio() async {
     var appDocDir = await getApplicationDocumentsDirectory();
     var dio = new Dio();
-    String proxy = Platform.isAndroid ? '$PROXY_IP:8888' : 'localhost:8888';
+    if (PROXY_ENABLED) {
+      String proxy = Platform.isAndroid ? '$PROXY_IP:8888' : 'localhost:8888';
 
-    // Tap into the onHttpClientCreate callback
-    // to configure the proxy just as we did earlier.
-    (dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate = (client) { 
-      // Hook into the findProxy callback to set the client's proxy.
-      client.findProxy = (uri) => 'PROXY $proxy';
-      
-      // This is a workaround to allow Charles to receive
-      // SSL payloads when your app is running on Android.
-      client.badCertificateCallback = (X509Certificate cert, String host, int port) => Platform.isAndroid;
-    };
-
+      // Tap into the onHttpClientCreate callback
+      // to configure the proxy just as we did earlier.
+      (dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate = (client) { 
+        // Hook into the findProxy callback to set the client's proxy.
+        client.findProxy = (uri) => 'PROXY $proxy';
+        
+        // This is a workaround to allow Charles to receive
+        // SSL payloads when your app is running on Android.
+        client.badCertificateCallback = (X509Certificate cert, String host, int port) => Platform.isAndroid;
+      };
+    }
     dio.interceptors.add(CookieManager(PersistCookieJar(dir: appDocDir.absolute.path + '/dioCookie')));
     dio.options.headers = {
       "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1",
@@ -75,7 +77,7 @@ class Fetcher {
       if (hasCategory) {
         category = obj.querySelector("span.list_ctg").text.trim();
         var styleStr = obj.querySelector("span.list_ctg").attributes['style'];
-        if (styleStr.length > 0) categoryColor = styleStr.split("#")[1];
+        if (styleStr != null && styleStr.length > 0) categoryColor = styleStr.split("#")[1];
         else categoryColor = "616BAF";
       }
 
@@ -221,6 +223,7 @@ class Fetcher {
     };
   }
 
+
   static Future<Map<String, String>> uploadIamge({
     String fileName, 
     String imageDataAsBase64,
@@ -253,10 +256,13 @@ class Fetcher {
       responseType: ResponseType.json
     ));
 
-    if (response.data['error'] != 0) throw GenericException('Got error while uploading');
+    var responseJson = jsonDecode(response.data.toString());
+
+    print(responseJson['error']);
+    if (responseJson['error'] != 0) throw GenericException('Got error while uploading');
     return {
-      'url': 'https://img.meeco.kr${response.data['download_url']}',
-      'targetSrl': response.data['upload_target_srl']
+      'url': 'https://img.meeco.kr${responseJson['download_url']}',
+      'targetSrl': responseJson['upload_target_srl']
     };
   }
 
@@ -270,18 +276,21 @@ class Fetcher {
       var cookieJar = DefaultCookieJar();
       cookieJar.deleteAll();
       dio.interceptors.add(CookieManager(cookieJar));
-      String proxy = Platform.isAndroid ? '$PROXY_IP:8888' : 'localhost:8888';
 
-      // Tap into the onHttpClientCreate callback
-      // to configure the proxy just as we did earlier.
-      (dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate = (client) { 
-        // Hook into the findProxy callback to set the client's proxy.
-        client.findProxy = (uri) => 'PROXY $proxy';
-        
-        // This is a workaround to allow Charles to receive
-        // SSL payloads when your app is running on Android.
-        client.badCertificateCallback = (X509Certificate cert, String host, int port) => Platform.isAndroid;
-      };
+      if (PROXY_ENABLED) {
+        String proxy = Platform.isAndroid ? '$PROXY_IP:8888' : 'localhost:8888';
+
+        // Tap into the onHttpClientCreate callback
+        // to configure the proxy just as we did earlier.
+        (dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate = (client) { 
+          // Hook into the findProxy callback to set the client's proxy.
+          client.findProxy = (uri) => 'PROXY $proxy';
+          
+          // This is a workaround to allow Charles to receive
+          // SSL payloads when your app is running on Android.
+          client.badCertificateCallback = (X509Certificate cert, String host, int port) => Platform.isAndroid;
+        };
+      }
 
       dio.options.headers = {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0_1 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A402 Safari/604.1",

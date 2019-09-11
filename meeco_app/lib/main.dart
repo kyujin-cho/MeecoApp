@@ -115,11 +115,15 @@ class _MainAppState extends State<MainApp> {
     return PlatformApp(
       title: 'MeecoApp',
       android: (context) => MaterialAppData(
-        theme: ThemeData.light()
+        theme: Theme.of(context).copyWith(
+          appBarTheme: Theme.of(context).appBarTheme.copyWith(
+            color: Colors.white,
+            iconTheme: IconThemeData(color: Colors.black)
+          ),
+        )
       ),
       home: PlatformScaffold(
         appBar: PlatformAppBar(
-          backgroundColor: Colors.white,
           title: _titleOptions.elementAt(_selectedIndex),
         ),
         bottomNavBar: PlatformNavBar(

@@ -29,7 +29,7 @@ class MeecoUploadAdapter {
       var reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = function() {
-        FlutterChannel.postImage(JSON.stringify({
+        FTpostImage.postMessage(JSON.stringify({
           id,
           file: reader.result.split(",")[1]
         }));
