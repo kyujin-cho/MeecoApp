@@ -2,14 +2,15 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_flipperkit/flipper_client.dart';
-import 'package:flutter_flipperkit/flutter_flipperkit.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 
 import 'package:meeco_app/bloc/bloc.dart';
 import 'package:meeco_app/bloc/event.dart';
 import 'package:meeco_app/bloc/repository.dart';
 import 'package:meeco_app/bloc/state.dart';
+import 'package:meeco_app/pages/article.dart';
+import 'package:meeco_app/pages/articlelist.dart';
+import 'package:meeco_app/pages/articlewriter.dart';
 import './pages/mainpage.dart';
 import './pages/todaypage.dart';
 import './pages/settingpage.dart';
@@ -122,23 +123,29 @@ class _MainAppState extends State<MainApp> {
           ),
         )
       ),
-      home: PlatformScaffold(
-        appBar: PlatformAppBar(
-          title: _titleOptions.elementAt(_selectedIndex),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => PlatformScaffold(
+          appBar: PlatformAppBar(
+            title: _titleOptions.elementAt(_selectedIndex),
+          ),
+          bottomNavBar: PlatformNavBar(
+            currentIndex: _selectedIndex,
+            itemChanged: _onNavItemTapped,
+            items: Iterable<int>.generate(_titleOptions.length)
+                    .map<BottomNavigationBarItem>((index) => BottomNavigationBarItem(
+                        title: _titleOptions.elementAt(index), 
+                        icon: _iconOptions.elementAt(index),
+                        activeIcon: _solidIconOptions.elementAt(index)
+                    )).toList(),
+          ),
+          // iosContentPadding: true,
+          body: _widgetOptions.elementAt(_selectedIndex),
         ),
-        bottomNavBar: PlatformNavBar(
-          currentIndex: _selectedIndex,
-          itemChanged: _onNavItemTapped,
-          items: Iterable<int>.generate(_titleOptions.length)
-                  .map<BottomNavigationBarItem>((index) => BottomNavigationBarItem(
-                      title: _titleOptions.elementAt(index), 
-                      icon: _iconOptions.elementAt(index),
-                      activeIcon: _solidIconOptions.elementAt(index)
-                  )).toList(),
-        ),
-        iosContentPadding: true,
-        body: _widgetOptions.elementAt(_selectedIndex),
-      )
+        '/articleList': (context) => ArticleListPage(),
+        '/article': (context) => ArticlePage(),
+        '/articleWriter': (context) => ArticleWriterPage()
+      },
     );
   }
 }

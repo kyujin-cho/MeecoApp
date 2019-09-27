@@ -14,15 +14,6 @@ import '../main.dart';
 class SettingPage extends StatelessWidget {
   final UserRepository userRepository = UserRepository();
 
-  Route _createRoute(Widget page) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return child;
-      }
-    );
-  }
-
   void _onLoginTapped(BuildContext context) {
     final _usernameController = TextEditingController();
     final _passwordController = TextEditingController();

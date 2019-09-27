@@ -7,27 +7,31 @@ import 'package:meeco_app/functions.dart';
 import 'package:meeco_app/types.dart';
 
 class ArticlePage extends StatelessWidget {
-  final NormalRowInfo articleRow;
-
-  ArticlePage({Key key, @required this.articleRow}): super(key: key);
-  
   @override
   Widget build(BuildContext context) {
-    return ArticleWidget(articleRow: articleRow);
+    Pair<String, String> arguments = ModalRoute.of(context).settings.arguments;
+
+    return ArticleWidget(boardId: arguments.left, articleId: arguments.right);
   }
 }
 
 class ArticleWidget extends StatefulWidget {
-  final NormalRowInfo articleRow;
+  final String boardId;
+  final String articleId;
 
-  ArticleWidget({Key key, @required this.articleRow}): super(key: key);
+  ArticleWidget({
+    Key key, 
+    @required this.boardId,
+    @required this.articleId
+  }): super(key: key);
   
   @override
-  _ArticleState createState() => new _ArticleState(articleRow);
+  _ArticleState createState() => new _ArticleState(boardId: boardId, articleId: articleId);
 }
 
 class _ArticleState extends State<ArticleWidget> {
-  final NormalRowInfo articleRow;
+  final String boardId;
+  final String articleId;
   ArticleInfo article;
 
   @override
@@ -35,15 +39,19 @@ class _ArticleState extends State<ArticleWidget> {
     super.initState();
 
     _loadHtml();
+    print('Html Loaded');
   }
 
-  _ArticleState(this.articleRow);
+  _ArticleState({
+    @required this.boardId,
+    @required this.articleId
+  });
 
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
       backgroundColor: Colors.white,
-      appBar: PlatformAppBar(title: PlatformText(articleRow.boardName)),
+      appBar: PlatformAppBar(title: PlatformText(article != null ? article.title : '')),
       body: Stack(
         children: <Widget>[
           SingleChildScrollView(
@@ -58,15 +66,15 @@ class _ArticleState extends State<ArticleWidget> {
                   ),
                   contentPadding: EdgeInsets.symmetric(horizontal: 10.0),
                   title: Text(
-                    articleRow.title,
+                    article != null ? article.title : '',
                     style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
                   ),
                   subtitle: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(articleRow.nickname),
+                      Text(article != null ? article.nickname : ''),
                       Text(' · '),
-                      Text(articleRow.time)
+                      Text(article != null ? article.time : '')
                     ],
                   ),
                 ),
@@ -82,7 +90,7 @@ class _ArticleState extends State<ArticleWidget> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 10.0),
                   child: Text(
-                    '댓글 ${articleRow.replyCount} 개',
+                    '댓글 ${article != null ? article.replies.length : ''} 개',
                     style: TextStyle(color: Colors.grey),
                   ),
                 ),
@@ -134,13 +142,14 @@ class _ArticleState extends State<ArticleWidget> {
             )
           )
         ],
-      )
+      ),
+      iosContentPadding: true,
     );
   }
 
   _loadHtml() async {
     print('Webview loaded');
-    article = await Fetcher.fetchArticle(boardId: articleRow.boardId, articleId: articleRow.articleId);
+    article = await Fetcher.fetchArticle(boardId: boardId, articleId: articleId);
     setState(() {
       
     });

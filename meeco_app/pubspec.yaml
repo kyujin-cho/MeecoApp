@@ -26,22 +26,22 @@ dependencies:
   cupertino_icons: ^0.1.2
   dio: ^2.1.0
   equatable: ^0.5.1
-  flutter_flipperkit: ^0.0.19
   flutter_bloc:
-  flipperkit_dio_interceptor: 
   flutter_platform_widgets: ^0.12.0
   flutter_secure_storage: ^3.2.1+1
   flutter_speed_dial:
   flutter_widget_from_html: 
-  webview_flutter: 
+  webview_flutter: ^0.3.14+1
   html: ^0.14.0+2
   overlay_container: 
   path_provider: ^1.2.2
   pull_to_refresh: ^1.5.5
   responsive_container:
   rxdart: ^0.22.2
+  oauth2: 
   uuid:
   zefyr:
+  yaml:
 
 dev_dependencies:
   flutter_test:

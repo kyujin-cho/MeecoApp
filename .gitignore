@@ -9,3 +9,6 @@
 /build
 /captures
 .externalNativeBuild
+
+test_server/**/*
+test_server

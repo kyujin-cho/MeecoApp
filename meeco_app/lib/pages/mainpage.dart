@@ -17,15 +17,6 @@ final Map<String, List<Pair<String, String>>> categories = {
 };
 
 class MainPage extends StatelessWidget {
-  Route _createRoute(Pair<String, String> boardInfo) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => ArticleListPage(boardInfo),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return child;
-      }
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     List<Widget> widgets = [];
@@ -34,7 +25,10 @@ class MainPage extends StatelessWidget {
         ListTile(
           title: PlatformText(pair.right),
           onTap: () {
-            Navigator.of(context).push(_createRoute(pair));
+            Navigator.of(context).pushNamed(
+              '/articleList',
+              arguments: pair
+            );
           },
         )
       ).toList());

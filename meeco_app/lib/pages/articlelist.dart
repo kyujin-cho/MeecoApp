@@ -11,32 +11,17 @@ import 'package:pull_to_refresh/pull_to_refresh.dart' as p2r;
 import '../types.dart';
 import '../functions.dart';
 
-Route createRoute(Widget page) {
-  return PageRouteBuilder(
-    pageBuilder: (context, animation, secondaryAnimation) => page,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      return child;
-    }
-  );
-}
-
 class ArticleListPage extends StatelessWidget {
-  String boardId;
-  String boardName; 
-
-  ArticleListPage(Pair<String, String> boardInfo) {
-    boardId = boardInfo.left;
-    boardName = boardInfo.right;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final Pair<String, String> args = ModalRoute.of(context).settings.arguments;
     return BlocBuilder<AuthenticationBloc, AuthenticationState>(
       builder: (context, state) => PlatformScaffold(
         appBar: PlatformAppBar(
-          title: Text(boardName, style: TextStyle(color: Colors.black))
+          title: Text(args.right, style: TextStyle(color: Colors.black))
         ),
-        body: ListWidget(boardId: boardId),
+        iosContentPadding: true,
+        body: ListWidget(boardId: args.left),
       ),
     );
   }
@@ -57,6 +42,7 @@ class _ListWidgetState extends State<ListWidget> {
   var present = 0;
   var pageNum = 1;
   var isLoading = false;
+
   p2r.RefreshController _refreshController = p2r.RefreshController(initialRefresh: true);
 
   _ListWidgetState(this.boardId);
@@ -192,20 +178,23 @@ class _ListWidgetState extends State<ListWidget> {
               ),
               itemBuilder: (context, index) {
                 var row = items[index];
+                var titleElements = [
+                  TextSpan(
+                    text: present > 0 ? row.title : '',
+                    style: TextStyle(fontSize: 16.0, color: Colors.black),
+                  ),
+                ];
+                if (row.categories.length > 0) {
+                  titleElements.insert(0, TextSpan(
+                    text: present > 0 ? '${row.category} ' : '',
+                    style: present > 0 ? TextStyle(color: Fetcher.hexToColor('#${row.categoryColor}'), fontSize: 16.0) : null,
+                  ));
+                }
                 return ListTile(
                   title: RichText(
                     text: TextSpan(
                       text: '',
-                      children: [
-                        TextSpan(
-                          text: present > 0 ? '${row.category} ' : '',
-                          style: present > 0 ? TextStyle(color: Fetcher.hexToColor('#${row.categoryColor}'), fontSize: 16.0) : null,
-                        ),
-                        TextSpan(
-                          text: present > 0 ? row.title : '',
-                          style: TextStyle(fontSize: 16.0, color: Colors.black),
-                        ),
-                      ]
+                      children: titleElements
                     )
                   ),
                   subtitle: Row(
@@ -218,7 +207,10 @@ class _ListWidgetState extends State<ListWidget> {
                   ),
                   trailing: _determineTrailing(row),
                   onTap: () {
-                    Navigator.of(context).push(createRoute(ArticlePage(articleRow: row)));
+                    Navigator.of(context).pushNamed(
+                      '/article',
+                      arguments: Pair<String, String>(boardId, row.articleId) 
+                    );
                   },
                 );
               },
@@ -234,7 +226,13 @@ class _ListWidgetState extends State<ListWidget> {
               child: FloatingActionButton(
                 child: Icon(Icons.create),
                 backgroundColor: Colors.blue,
-                onPressed: () => Navigator.of(context).push(createRoute(ArticleWriter(boardId: boardId))),
+                onPressed: () => Navigator.of(context).pushNamed(
+                  '/articleWriter',
+                  arguments: ArticleWriterArguments(
+                    boardId: boardId,
+                    categories: ((items != null && items.length > 0) ? items[0].categories : null)
+                  )
+                ),
               ),
             ),
           ));

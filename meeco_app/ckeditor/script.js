@@ -7,6 +7,20 @@ function MeecoUploadAdapterPlugin(editor) {
   };
 }
 
+window.onSetCategories = (categories) => {
+  const select = document.getElementById('categories')
+  select.addEventListener('change', (ev) => {
+    const selectedIndex = select.selectedIndex
+    FTcategoryChanged.postMessage(selectedIndex.toString())
+  })
+  categories.forEach((item, index) => {
+    const option = document.createElement('option')
+    option.value = index.toString()
+    option.innerHTML = item
+    select.appendChild(option)
+  })
+}
+
 ClassicEditor.create(document.querySelector("#editor"), {
   extraPlugins: [MeecoUploadAdapterPlugin]
 })
